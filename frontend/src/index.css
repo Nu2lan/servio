@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-surface-950 text-surface-100 font-sans;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold
+           transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-offset-2
+           focus:ring-offset-surface-950 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 focus:ring-brand-500
+           shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30;
+  }
+  .btn-secondary {
+    @apply btn bg-surface-700 text-surface-100 hover:bg-surface-600 focus:ring-surface-500;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  .btn-success {
+    @apply btn bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-surface-300 hover:bg-surface-800 hover:text-surface-100;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded-lg;
+  }
+
+  .card {
+    @apply bg-surface-800/50 backdrop-blur-sm border border-surface-700/50 rounded-2xl p-6
+           shadow-xl shadow-black/10;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-surface-600 bg-surface-800 px-4 py-2.5 text-sm
+           text-surface-100 placeholder-surface-400
+           focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20
+           transition-all duration-200;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-surface-300 mb-1.5;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-confirmed {
+    @apply badge bg-amber-500/20 text-amber-400 border border-amber-500/30;
+  }
+  .badge-paid {
+    @apply badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30;
+  }
+  .badge-admin {
+    @apply badge bg-purple-500/20 text-purple-400 border border-purple-500/30;
+  }
+  .badge-waiter {
+    @apply badge bg-blue-500/20 text-blue-400 border border-blue-500/30;
+  }
+  .badge-kitchen {
+    @apply badge bg-orange-500/20 text-orange-400 border border-orange-500/30;
+  }
+  .badge-bar {
+    @apply badge bg-pink-500/20 text-pink-400 border border-pink-500/30;
+  }
+  .badge-cashier {
+    @apply badge bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+}
+
+/* Hide number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+/* Hide scrollbar for horizontal scroll areas */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
