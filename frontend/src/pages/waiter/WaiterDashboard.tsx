@@ -215,7 +215,7 @@ const WaiterDashboard: React.FC = () => {
                 tableNumber,
                 items: cart.map((c) => ({ menuItemId: c.menuItemId, quantity: c.quantity })),
             });
-            toast.success(`Order for Table ${tableNumber} confirmed!`);
+            toast.success(`Order for Table ${tableNumber.includes('-') ? tableNumber.split('-').pop() : tableNumber} confirmed!`);
             setCart([]);
             setTableNumber(null);
             setCartOpen(false);
@@ -245,7 +245,7 @@ const WaiterDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-surface-100 flex items-center gap-2">
                     <HiOutlineShoppingCart className="w-5 h-5 text-brand-400" />
-                    Order — Table {tableNumber}
+                    Order — Table {tableNumber.includes('-') ? tableNumber.split('-').pop() : tableNumber}
                 </h2>
                 {totalItems > 0 && (
                     <span className="badge bg-brand-500/20 text-brand-400 border border-brand-500/30">
@@ -377,12 +377,13 @@ const WaiterDashboard: React.FC = () => {
                     {currentHall && currentHall.type !== 'cabinet' && (
                         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
                             {currentTables.map((t) => {
-                                const busyAt = busyTables.get(String(t));
+                                const hallKey = `${activeHall}-${t}`;
+                                const busyAt = busyTables.get(hallKey);
                                 const isBusy = !!busyAt;
                                 return (
                                     <button
                                         key={t}
-                                        onClick={() => setTableNumber(String(t))}
+                                        onClick={() => setTableNumber(hallKey)}
                                         className={`aspect-square rounded-2xl text-xl font-bold transition-all active:scale-95 relative flex flex-col items-center justify-center ${isBusy
                                             ? 'bg-red-500/15 border-2 border-red-500/50 text-red-400 hover:bg-red-500/25 hover:border-red-500/70 shadow-lg shadow-red-500/10'
                                             : 'bg-surface-800 border border-surface-700/50 text-surface-300 hover:bg-brand-500 hover:text-white hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/20 hover:scale-105'
@@ -470,7 +471,7 @@ const WaiterDashboard: React.FC = () => {
                             <div className="flex items-center gap-1.5">
                                 <span className="text-surface-400 text-xs font-medium">Table</span>
                                 <span className="w-8 h-8 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold text-sm shadow-lg shadow-brand-500/30">
-                                    {tableNumber}
+                                    {tableNumber.includes('-') ? tableNumber.split('-').pop() : tableNumber}
                                 </span>
                             </div>
                         </>

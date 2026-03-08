@@ -57,7 +57,8 @@ const CashierDashboard: React.FC = () => {
 
         socket.on('new-order', (order: Order) => {
             setOrders((prev) => [order, ...prev]);
-            toast.success(`New order — Table #${order.tableNumber}`, { icon: '🔔' });
+            const displayTable = order.tableNumber.includes('-') ? order.tableNumber.replace('-', ' — Table ') : `Table #${order.tableNumber}`;
+            toast.success(`New order — ${displayTable}`, { icon: '🔔' });
         });
 
         return () => {
@@ -88,6 +89,14 @@ const CashierDashboard: React.FC = () => {
     const getOrderHall = (order: Order): string | null => {
         const cabinet = halls.find(h => h.type === 'cabinet' && h.name === order.tableNumber);
         if (cabinet) return cabinet.name;
+        // New format: "Hall-Number" (e.g. "Zal 1-3")
+        const dashIdx = order.tableNumber.lastIndexOf('-');
+        if (dashIdx > 0) {
+            const hallName = order.tableNumber.substring(0, dashIdx);
+            const hall = halls.find(h => h.type !== 'cabinet' && h.name === hallName);
+            if (hall) return hall.name;
+        }
+        // Legacy format: raw number
         const tableNum = parseInt(order.tableNumber);
         if (!isNaN(tableNum)) {
             const hall = halls.find(h => h.type !== 'cabinet' && h.tables.includes(tableNum));
@@ -96,14 +105,21 @@ const CashierDashboard: React.FC = () => {
         return null;
     };
 
+    // Extract display-friendly table number (just the number part)
+    const getDisplayTableNumber = (tableNumber: string): string => {
+        const dashIdx = tableNumber.lastIndexOf('-');
+        if (dashIdx > 0) return tableNumber.substring(dashIdx + 1);
+        return tableNumber;
+    };
+
     const isCabinetOrder = (order: Order): boolean => {
         return halls.some(h => h.type === 'cabinet' && h.name === order.tableNumber);
     };
     const handlePrintCheck = async (groupKey: string, group: GroupedOrder) => {
         const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === group.tableNumber);
-        const tableNum = parseInt(group.tableNumber);
-        const hall = !isCabinet && !isNaN(tableNum) ? halls.find(h => h.type !== 'cabinet' && h.tables.includes(tableNum)) : null;
-        const tableLabel = isCabinet ? group.tableNumber : hall ? `${hall.name} - Table #${group.tableNumber}` : `Table #${group.tableNumber}`;
+        const displayNum = getDisplayTableNumber(group.tableNumber);
+        const hallName = getOrderHall({ tableNumber: group.tableNumber } as Order);
+        const tableLabel = isCabinet ? group.tableNumber : hallName ? `${hallName} - Table #${displayNum}` : `Table #${displayNum}`;
         const itemsHtml = group.items.map(item =>
             `<tr><td>${item.name}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${(item.price * item.quantity).toFixed(2)}</td></tr>`
         ).join('');
@@ -384,10 +400,10 @@ const CashierDashboard: React.FC = () => {
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'bg-purple-500/20' : 'bg-brand-500/20'}`}>
-                                            <span className={`text-sm font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : group.tableNumber}</span>
+                                            <span className={`text-sm font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : getDisplayTableNumber(group.tableNumber)}</span>
                                         </div>
                                         <div>
-                                            <span className="text-xs text-surface-300 font-medium">{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Table ${group.tableNumber}`}</span>
+                                            <span className="text-xs text-surface-300 font-medium">{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Table ${getDisplayTableNumber(group.tableNumber)}`}</span>
                                             {group.orderCount > 1 && (
                                                 <p className="text-[10px] text-surface-500">{group.orderCount} orders</p>
                                             )}
@@ -460,11 +476,11 @@ const CashierDashboard: React.FC = () => {
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'bg-purple-500/20' : 'bg-brand-500/20'}`}>
-                                            <span className={`text-xl font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : group.tableNumber}</span>
+                                            <span className={`text-xl font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : getDisplayTableNumber(group.tableNumber)}</span>
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-surface-100">
-                                                {isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Table #${group.tableNumber}`}
+                                                {isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Table #${getDisplayTableNumber(group.tableNumber)}`}
                                                 {group.orderCount > 1 && (
                                                     <span className="ml-2 text-xs text-surface-500 font-normal bg-surface-800 px-2 py-0.5 rounded-md">{group.orderCount} orders</span>
                                                 )}
