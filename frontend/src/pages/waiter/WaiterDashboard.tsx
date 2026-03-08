@@ -245,7 +245,7 @@ const WaiterDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-surface-100 flex items-center gap-2">
                     <HiOutlineShoppingCart className="w-5 h-5 text-brand-400" />
-                    Order — Table {tableNumber.includes('-') ? tableNumber.split('-').pop() : tableNumber}
+                    Order — Table {tableNumber!.includes('-') ? tableNumber!.split('-').pop() : tableNumber}
                 </h2>
                 {totalItems > 0 && (
                     <span className="badge bg-brand-500/20 text-brand-400 border border-brand-500/30">
