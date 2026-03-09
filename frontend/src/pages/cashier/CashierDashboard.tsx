@@ -195,13 +195,13 @@ const CashierDashboard: React.FC = () => {
 
     const togglePayGroup = async (orderIds: string[]) => {
         try {
-            for (const id of orderIds) {
-                const { data } = await api.patch(`/cashier/orders/${id}/pay`);
-                setOrders((prev) =>
-                    prev.map((o) => (o._id === id ? data : o))
-                );
-            }
-            toast.success(`${orderIds.length} order(s) marked as paid`);
+            const { data } = await api.patch('/cashier/orders/pay-batch', { orderIds });
+            const updatedMap = new Map(data.map((o: Order) => [o._id, o]));
+            setOrders((prev) =>
+                prev.map((o) => (updatedMap.has(o._id) ? (updatedMap.get(o._id) as Order) : o))
+            );
+            const tableNum = data.length > 0 ? getDisplayTableNumber(data[0].tableNumber) : '';
+            toast.success(`Table ${tableNum} paid`);
         } catch {
             toast.error('Failed to update orders');
         }
@@ -447,7 +447,7 @@ const CashierDashboard: React.FC = () => {
                                         </button>
                                     )}
                                     <button
-                                        onClick={() => group.orderIds.length === 1 ? togglePay(group.orderIds[0]) : togglePayGroup(group.orderIds)}
+                                        onClick={() => togglePayGroup(group.orderIds)}
                                         disabled={group.status !== 'paid' && !group.checkPrinted}
                                         className={`${group.status === 'paid' ? 'w-full' : 'w-1/2'} py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${group.status === 'paid'
                                             ? 'bg-surface-700 text-surface-300 hover:bg-surface-600'
@@ -547,7 +547,7 @@ const CashierDashboard: React.FC = () => {
                                         </button>
                                     )}
                                     <button
-                                        onClick={() => group.orderIds.length === 1 ? togglePay(group.orderIds[0]) : togglePayGroup(group.orderIds)}
+                                        onClick={() => togglePayGroup(group.orderIds)}
                                         disabled={group.status !== 'paid' && !group.checkPrinted}
                                         className={`${group.status === 'paid' ? 'w-full' : 'w-1/2'} py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${group.status === 'paid'
                                             ? 'bg-surface-700 text-surface-300 hover:bg-surface-600'

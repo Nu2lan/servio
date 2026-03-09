@@ -4,12 +4,13 @@ import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import { getSocket } from '../../lib/socket';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlineMinus, HiOutlineShoppingCart, HiOutlineCheck, HiOutlineArrowLeft, HiOutlineX, HiOutlineViewGrid, HiOutlineViewList, HiOutlineClipboardList } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineMinus, HiOutlineShoppingCart, HiOutlineCheck, HiOutlineArrowLeft, HiOutlineX, HiOutlineViewGrid, HiOutlineViewList, HiOutlineClipboardList, HiOutlineRefresh, HiOutlineSwitchHorizontal } from 'react-icons/hi';
 
 interface MenuItem {
     _id: string;
     name: string;
     category: string;
+    price: number;
 }
 
 interface CartItem {
@@ -20,7 +21,7 @@ interface CartItem {
 
 interface TableOrder {
     _id: string;
-    items: { name: string; quantity: number }[];
+    items: { name: string; quantity: number; price: number }[];
     createdAt: string;
 }
 
@@ -46,6 +47,9 @@ const WaiterDashboard: React.FC = () => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [busyTables, setBusyTables] = useState<Map<string, string>>(new Map());
     const [tableOrders, setTableOrders] = useState<TableOrder[]>([]);
+    const [showLastOrders, setShowLastOrders] = useState(false);
+    const [changingTable, setChangingTable] = useState<string | null>(null);
+    const [showOrderPopup, setShowOrderPopup] = useState(false);
     const [, setTick] = useState(0);
     const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,6 +96,7 @@ const WaiterDashboard: React.FC = () => {
             fetchTableOrders(tableNumber);
         } else {
             setTableOrders([]);
+            setShowLastOrders(false);
         }
     }, [tableNumber]);
 
@@ -232,6 +237,34 @@ const WaiterDashboard: React.FC = () => {
         setCart([]);
         setActiveCategory('All');
         setCartOpen(false);
+        setShowLastOrders(false);
+        setChangingTable(null);
+    };
+
+    const handleChangeTable = () => {
+        if (!tableNumber) return;
+        setChangingTable(tableNumber);
+        setTableNumber(null);
+        setCart([]);
+        setCartOpen(false);
+        setShowLastOrders(false);
+    };
+
+    const handleChangeTableSelect = async (newTable: string) => {
+        if (!changingTable) return;
+        try {
+            await api.patch('/waiter/change-table', { fromTable: changingTable, toTable: newTable });
+            const displayOld = changingTable.includes('-') ? changingTable.split('-').pop() : changingTable;
+            const displayNew = newTable.includes('-') ? newTable.split('-').pop() : newTable;
+            toast.success(`Table ${displayOld} → Table ${displayNew}`);
+            setChangingTable(null);
+            setTableNumber(newTable);
+            setShowLastOrders(true);
+            // Refresh busy tables
+            fetchBusyTables();
+        } catch {
+            toast.error('Failed to change table');
+        }
     };
 
     const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0);
@@ -277,7 +310,7 @@ const WaiterDashboard: React.FC = () => {
                                     {item.quantity}
                                 </span>
                                 <button
-                                    onClick={() => addToCart({ _id: item.menuItemId, name: item.name, category: '' })}
+                                    onClick={() => addToCart({ _id: item.menuItemId, name: item.name, category: '', price: 0 })}
                                     className="w-8 h-8 lg:w-6 lg:h-6 rounded bg-brand-500 text-white hover:bg-brand-600 flex items-center justify-center transition-all text-xs"
                                 >
                                     <HiOutlinePlus className="w-3 h-3" />
@@ -316,20 +349,153 @@ const WaiterDashboard: React.FC = () => {
                         <HiOutlineClipboardList className="w-4 h-4" />
                         Previous Orders
                     </h3>
-                    <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
-                        {tableOrders.map((order) => (
-                            <div key={order._id} className="bg-surface-800/60 rounded-xl p-3 space-y-1.5">
-                                <span className="text-xs text-surface-500">
-                                    {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                </span>
-                                {order.items.map((item, idx) => (
-                                    <div key={idx} className="flex items-center justify-between">
-                                        <span className="text-sm text-surface-300">{item.name}</span>
-                                        <span className="text-xs font-semibold text-surface-400">×{item.quantity}</span>
+                    <div className="max-h-80 overflow-y-auto pr-1">
+                        <div
+                            onClick={() => setShowOrderPopup(true)}
+                            className="bg-surface-800/60 rounded-xl p-3 space-y-1.5 cursor-pointer hover:bg-surface-700/60 transition-all active:scale-[0.98]"
+                        >
+                            {(() => {
+                                const merged = new Map<string, number>();
+                                for (const order of tableOrders) {
+                                    for (const item of order.items) {
+                                        merged.set(item.name, (merged.get(item.name) || 0) + item.quantity);
+                                    }
+                                }
+                                return Array.from(merged.entries()).map(([name, qty]) => (
+                                    <div key={name} className="flex items-center justify-between">
+                                        <span className="text-sm text-surface-300">{name}</span>
+                                        <span className="text-xs font-semibold text-surface-400">×{qty}</span>
                                     </div>
-                                ))}
-                            </div>
-                        ))}
+                                ));
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Previous Orders Popup ─── */}
+            {showOrderPopup && tableOrders.length > 0 && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowOrderPopup(false)}>
+                    <div className="bg-surface-900 border border-surface-700/50 rounded-2xl w-[90%] max-w-md p-5 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-surface-100 flex items-center gap-2">
+                                <HiOutlineClipboardList className="w-5 h-5 text-brand-400" />
+                                Table {tableNumber?.includes('-') ? tableNumber.split('-').pop() : tableNumber} — Orders
+                            </h3>
+                            <button onClick={() => setShowOrderPopup(false)} className="text-surface-400 hover:text-surface-200">
+                                <HiOutlineX className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                            {(() => {
+                                const merged = new Map<string, { qty: number; price: number }>();
+                                for (const order of tableOrders) {
+                                    for (const item of order.items) {
+                                        const existing = merged.get(item.name);
+                                        if (existing) {
+                                            existing.qty += item.quantity;
+                                        } else {
+                                            merged.set(item.name, { qty: item.quantity, price: item.price });
+                                        }
+                                    }
+                                }
+                                const entries = Array.from(merged.entries());
+                                const total = entries.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
+                                return (
+                                    <>
+                                        {entries.map(([name, { qty, price }]) => (
+                                            <div key={name} className="flex items-center justify-between py-1.5 border-b border-surface-700/30 last:border-0">
+                                                <span className="text-sm text-surface-200">{name} <span className="text-surface-400">×{qty}</span></span>
+                                                <span className="text-sm font-bold text-surface-300">{(price * qty).toFixed(2)}</span>
+                                            </div>
+                                        ))}
+                                        <div className="flex items-center justify-between pt-3 mt-2 border-t border-surface-600">
+                                            <span className="text-sm font-bold text-surface-100">Total</span>
+                                            <span className="text-base font-bold text-brand-400">{total.toFixed(2)} AZN</span>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => {
+                                    const merged2 = new Map<string, { qty: number; price: number }>();
+                                    for (const order of tableOrders) {
+                                        for (const item of order.items) {
+                                            const ex = merged2.get(item.name);
+                                            if (ex) { ex.qty += item.quantity; }
+                                            else { merged2.set(item.name, { qty: item.quantity, price: item.price }); }
+                                        }
+                                    }
+                                    const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tableNumber);
+                                    const displayNum = tableNumber?.includes('-') ? tableNumber.split('-').pop() : tableNumber;
+                                    const hallName = tableNumber?.includes('-') ? tableNumber.substring(0, tableNumber.lastIndexOf('-')) : activeHall;
+                                    const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Table #${displayNum}` : `Table #${displayNum}`;
+                                    const entries2 = Array.from(merged2.entries());
+                                    const receiptTotal = entries2.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
+                                    const itemsHtml = entries2.map(([name, { qty, price }]) =>
+                                        `<tr><td>${name}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${(price * qty).toFixed(2)}</td></tr>`
+                                    ).join('');
+                                    const receiptHtml = [
+                                        '<!DOCTYPE html><html><head><title>Check</title>',
+                                        '<style>',
+                                        '@page { size: 80mm auto; margin: 0 }',
+                                        '* { margin: 0; padding: 0; box-sizing: border-box }',
+                                        "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
+                                        '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
+                                        'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
+                                        '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
+                                        'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
+                                        'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
+                                        '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right }',
+                                        '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
+                                        '</style></head>',
+                                        '<body>',
+                                        '<div class="pub">Art\u0131bir</div>',
+                                        `<h3>${tableLabel}</h3>`,
+                                        '<div class="info">',
+                                        `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
+                                        '</div>',
+                                        `<table>${itemsHtml}</table>`,
+                                        `<div class="t">Total: ${receiptTotal.toFixed(2)} AZN</div>`,
+                                        '<div class="f">T\u0259\u015f\u0259kk\u00fcrl\u0259r</div>',
+                                        '</body></html>',
+                                    ].join('');
+
+                                    const iframe = document.createElement('iframe');
+                                    iframe.style.position = 'fixed';
+                                    iframe.style.top = '-10000px';
+                                    iframe.style.left = '-10000px';
+                                    iframe.style.width = '80mm';
+                                    iframe.style.height = '0';
+                                    document.body.appendChild(iframe);
+                                    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                                    if (doc) {
+                                        doc.open();
+                                        doc.write(receiptHtml);
+                                        doc.close();
+                                        setTimeout(() => {
+                                            iframe.contentWindow?.print();
+                                            setTimeout(() => document.body.removeChild(iframe), 500);
+                                        }, 250);
+                                    }
+                                    setShowOrderPopup(false);
+                                    toast.success('Check printed');
+                                }}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-blue-500 text-white hover:bg-blue-600 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25"
+                            >
+                                Print Check
+                            </button>
+                            <button
+                                onClick={() => setShowOrderPopup(false)}
+                                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-surface-700 text-surface-300 hover:bg-surface-600 transition-all"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -373,6 +539,24 @@ const WaiterDashboard: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Change table banner */}
+                    {changingTable && (
+                        <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <HiOutlineSwitchHorizontal className="w-5 h-5 text-amber-400" />
+                                <span className="text-sm font-semibold text-amber-300">
+                                    Moving Table {changingTable.includes('-') ? changingTable.split('-').pop() : changingTable} → Select new table
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setChangingTable(null)}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-surface-700 text-surface-300 hover:bg-surface-600"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    )}
+
                     {/* Table grid for active hall */}
                     {currentHall && currentHall.type !== 'cabinet' && (
                         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
@@ -383,7 +567,14 @@ const WaiterDashboard: React.FC = () => {
                                 return (
                                     <button
                                         key={t}
-                                        onClick={() => setTableNumber(hallKey)}
+                                        onClick={() => {
+                                            if (changingTable) {
+                                                handleChangeTableSelect(hallKey);
+                                            } else {
+                                                setTableNumber(hallKey);
+                                                if (isBusy) setShowLastOrders(true);
+                                            }
+                                        }}
                                         className={`aspect-square rounded-2xl text-xl font-bold transition-all active:scale-95 relative flex flex-col items-center justify-center ${isBusy
                                             ? 'bg-red-500/15 border-2 border-red-500/50 text-red-400 hover:bg-red-500/25 hover:border-red-500/70 shadow-lg shadow-red-500/10'
                                             : 'bg-surface-800 border border-surface-700/50 text-surface-300 hover:bg-brand-500 hover:text-white hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/20 hover:scale-105'
@@ -413,7 +604,14 @@ const WaiterDashboard: React.FC = () => {
                                     return (
                                         <button
                                             key={cab.name}
-                                            onClick={() => setTableNumber(cab.name)}
+                                            onClick={() => {
+                                                if (changingTable) {
+                                                    handleChangeTableSelect(cab.name);
+                                                } else {
+                                                    setTableNumber(cab.name);
+                                                    if (isBusy) setShowLastOrders(true);
+                                                }
+                                            }}
                                             className={`py-4 px-6 rounded-2xl text-base font-bold transition-all active:scale-95 relative ${isBusy
                                                 ? 'bg-red-500/15 border-2 border-red-500/50 text-red-400 hover:bg-red-500/25 hover:border-red-500/70 shadow-lg shadow-red-500/10'
                                                 : 'bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500 hover:text-white hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20 hover:scale-105'
@@ -463,6 +661,16 @@ const WaiterDashboard: React.FC = () => {
                         <HiOutlineArrowLeft className="w-4 h-4" />
                         Back
                     </button>
+                    {tableNumber && busyTables.has(tableNumber) && (
+                        <button
+                            onClick={handleChangeTable}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
+                                text-amber-400 hover:bg-amber-500/15 flex items-center gap-1"
+                        >
+                            <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
+                            Change
+                        </button>
+                    )}
                     {halls.some(h => h.type === 'cabinet' && h.name === tableNumber) ? (
                         <span className="font-semibold text-surface-100 text-sm absolute left-1/2 -translate-x-1/2">{tableNumber}</span>
                     ) : (
@@ -478,11 +686,23 @@ const WaiterDashboard: React.FC = () => {
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+                    {tableNumber && busyTables.has(tableNumber) && (
+                        <button
+                            onClick={() => { setShowLastOrders(!showLastOrders); setActiveCategory('All'); }}
+                            className={`flex-shrink-0 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${showLastOrders
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                                }`}
+                        >
+                            <HiOutlineRefresh className="w-4 h-4" />
+                            Last Orders
+                        </button>
+                    )}
                     {categories.map((cat) => (
                         <button
                             key={cat}
-                            onClick={() => setActiveCategory(cat)}
-                            className={`flex-shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${activeCategory === cat
+                            onClick={() => { setShowLastOrders(false); setActiveCategory(cat); }}
+                            className={`flex-shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${!showLastOrders && activeCategory === cat
                                 ? 'bg-brand-500 text-white'
                                 : 'bg-surface-800 text-surface-400 hover:text-surface-200'
                                 }`}
@@ -516,21 +736,47 @@ const WaiterDashboard: React.FC = () => {
                             Back to Tables
                         </button>
 
-                        <div className="card p-3 space-y-1">
-                            <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wider px-3 mb-2">Categories</h3>
-                            {categories.map((cat) => (
-                                <button
-                                    key={cat}
-                                    onClick={() => setActiveCategory(cat)}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeCategory === cat
-                                        ? 'bg-brand-500 text-white'
-                                        : 'text-surface-400 hover:bg-surface-700 hover:text-surface-200'
-                                        }`}
-                                >
-                                    {cat.toUpperCase()}
-                                </button>
-                            ))}
-                        </div>
+                        {tableNumber && busyTables.has(tableNumber) && (
+                            <button
+                                onClick={handleChangeTable}
+                                className="w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2
+                                    bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25"
+                            >
+                                <HiOutlineSwitchHorizontal className="w-4 h-4" />
+                                Change Table
+                            </button>
+                        )}
+
+                        {tableNumber && busyTables.has(tableNumber) && (
+                            <button
+                                onClick={() => { setShowLastOrders(!showLastOrders); setActiveCategory('All'); }}
+                                className={`w-full px-4 py-3.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${showLastOrders
+                                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+                                    : 'bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25'
+                                    }`}
+                            >
+                                <HiOutlineRefresh className="w-4 h-4" />
+                                Last Orders
+                            </button>
+                        )}
+
+                        {(
+                            <div className="card p-3 space-y-1">
+                                <h3 className="text-xs font-semibold text-surface-400 uppercase tracking-wider px-3 mb-2">Categories</h3>
+                                {categories.map((cat) => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => { setShowLastOrders(false); setActiveCategory(cat); }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${!showLastOrders && activeCategory === cat
+                                            ? 'bg-brand-500 text-white'
+                                            : 'text-surface-400 hover:bg-surface-700 hover:text-surface-200'
+                                            }`}
+                                    >
+                                        {cat.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -538,10 +784,43 @@ const WaiterDashboard: React.FC = () => {
                 <div className="flex-1 min-w-0 space-y-4">
 
 
-                    {/* Menu grid */}
+                    {/* Menu grid or Last Orders */}
                     {loading ? (
                         <div className="flex items-center justify-center py-20">
                             <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                    ) : showLastOrders ? (
+                        <div className={`gap-3 pb-24 lg:pb-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2`}>
+                            {(() => {
+                                const merged = new Map<string, number>();
+                                for (const order of tableOrders) {
+                                    for (const item of order.items) {
+                                        merged.set(item.name, (merged.get(item.name) || 0) + item.quantity);
+                                    }
+                                }
+                                return Array.from(merged.entries()).map(([name, prevQty]) => {
+                                    const menuItem = menuItems.find(m => m.name === name);
+                                    if (!menuItem) return null;
+                                    const qty = getCartQty(menuItem._id);
+                                    return (
+                                        <div
+                                            key={name}
+                                            onClick={() => addToCart(menuItem)}
+                                            className={`card flex flex-col items-center justify-center text-center p-4 transition-all cursor-pointer
+                                                hover:border-amber-500/30 hover:bg-amber-500/5 active:scale-[0.98] relative
+                                                ${qty > 0 ? 'border-amber-500/50 bg-amber-500/5' : 'border-amber-500/20'}`}
+                                        >
+                                            <h3 className="font-semibold text-surface-100 text-sm">{name}</h3>
+                                            <p className="text-xs text-amber-400/70 mt-0.5">{menuItem.price.toFixed(2)} AZN · prev ×{prevQty}</p>
+                                            {qty > 0 && (
+                                                <span className="absolute top-2 right-2 min-w-6 h-6 px-1.5 rounded-md bg-brand-500 text-white flex items-center justify-center font-bold text-xs shadow-lg shadow-brand-500/30">
+                                                    {qty}
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                });
+                            })()}
                         </div>
                     ) : (
                         <div className={`gap-3 pb-24 lg:pb-0 ${viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2' : 'grid grid-cols-1 sm:grid-cols-2'}`}>
@@ -556,7 +835,7 @@ const WaiterDashboard: React.FC = () => {
                                             ${qty > 0 ? 'border-brand-500/50 bg-brand-500/5' : ''}`}
                                     >
                                         <h3 className="font-semibold text-surface-100 text-sm">{item.name}</h3>
-                                        <p className="text-xs text-surface-500 mt-0.5">{item.category.toUpperCase()}</p>
+                                        <p className="text-xs text-surface-500 mt-0.5">{item.price.toFixed(2)} AZN</p>
                                         {qty > 0 && (
                                             <span className="absolute top-2 right-2 min-w-6 h-6 px-1.5 rounded-md bg-brand-500 text-white flex items-center justify-center font-bold text-xs shadow-lg shadow-brand-500/30">
                                                 {qty}
@@ -573,7 +852,7 @@ const WaiterDashboard: React.FC = () => {
                                     >
                                         <div>
                                             <h3 className="font-semibold text-surface-100">{item.name}</h3>
-                                            <p className="text-xs text-surface-400">{item.category.toUpperCase()}</p>
+                                            <p className="text-xs text-surface-400">{item.price.toFixed(2)} AZN</p>
                                         </div>
                                         {qty > 0 && (
                                             <span className="min-w-7 h-7 px-2 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold text-sm shadow-lg shadow-brand-500/30">

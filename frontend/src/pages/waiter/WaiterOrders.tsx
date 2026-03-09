@@ -70,7 +70,15 @@ const WaiterOrders: React.FC = () => {
         const cabinet = halls.find(h => h.type === 'cabinet' && h.name === order.tableNumber);
         if (cabinet) return cabinet.name;
 
-        // Check which hall the table number belongs to
+        // New format: "Hall-Number" (e.g. "Zal 1-3")
+        const dashIdx = order.tableNumber.lastIndexOf('-');
+        if (dashIdx > 0) {
+            const hallName = order.tableNumber.substring(0, dashIdx);
+            const hall = halls.find(h => h.type !== 'cabinet' && h.name === hallName);
+            if (hall) return hall.name;
+        }
+
+        // Legacy format: raw number
         const tableNum = parseInt(order.tableNumber);
         if (!isNaN(tableNum)) {
             const hall = halls.find(h => h.type !== 'cabinet' && h.tables.includes(tableNum));
@@ -78,6 +86,13 @@ const WaiterOrders: React.FC = () => {
         }
 
         return null;
+    };
+
+    // Extract display-friendly table number (just the number part)
+    const getDisplayTableNumber = (tableNumber: string): string => {
+        const dashIdx = tableNumber.lastIndexOf('-');
+        if (dashIdx > 0) return tableNumber.substring(dashIdx + 1);
+        return tableNumber;
     };
 
     // Get orders for active tab
@@ -220,7 +235,7 @@ const WaiterOrders: React.FC = () => {
                                         ) : (
                                             <>
                                                 <span className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-brand-500/30">
-                                                    {group.tableNumber}
+                                                    {getDisplayTableNumber(group.tableNumber)}
                                                 </span>
                                                 <span className="text-xs text-surface-500">Table</span>
                                             </>
