@@ -48,6 +48,7 @@ const WaiterDashboard: React.FC = () => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [busyTables, setBusyTables] = useState<Map<string, { latestOrderAt: string; checkPrinted: boolean }>>(new Map());
     const [tableOrders, setTableOrders] = useState<TableOrder[]>([]);
+    const [tableOrdersCache, setTableOrdersCache] = useState<Record<string, TableOrder[]>>({});
     const [showLastOrders, setShowLastOrders] = useState(false);
     const [changingTable, setChangingTable] = useState<string | null>(null);
     const [deletedItemsToPrint, setDeletedItemsToPrint] = useState<{ name: string, price: number }[]>([]);
@@ -91,12 +92,23 @@ const WaiterDashboard: React.FC = () => {
 
     // Fetch existing orders whenever a table is selected
     const fetchTableOrders = async (table: string) => {
+        if (tableOrdersCache[table]) {
+            setTableOrders(tableOrdersCache[table]);
+        }
         try {
             const { data } = await api.get(`/waiter/table-orders/${encodeURIComponent(table)}`);
             setTableOrders(data);
+            setTableOrdersCache(prev => ({ ...prev, [table]: data }));
         } catch {
             setTableOrders([]);
         }
+    };
+
+    const fetchTableOrdersForCache = async (table: string) => {
+        try {
+            const { data } = await api.get(`/waiter/table-orders/${encodeURIComponent(table)}`);
+            setTableOrdersCache(prev => ({ ...prev, [table]: data }));
+        } catch { }
     };
 
     useEffect(() => {
@@ -128,6 +140,7 @@ const WaiterDashboard: React.FC = () => {
             });
         });
         socket.on('table-busy', (data: { tableNumber: string; latestOrderAt: string }) => {
+            fetchTableOrdersForCache(String(data.tableNumber));
             setBusyTables((prev) => {
                 const next = new Map(prev);
                 next.set(String(data.tableNumber), {
@@ -157,10 +170,12 @@ const WaiterDashboard: React.FC = () => {
             const { data } = await api.get('/waiter/busy-tables');
             const map = new Map<string, { latestOrderAt: string; checkPrinted: boolean }>();
             for (const entry of data) {
-                map.set(String(entry.tableNumber), {
+                const tNum = String(entry.tableNumber);
+                map.set(tNum, {
                     latestOrderAt: entry.latestOrderAt,
                     checkPrinted: entry.checkPrinted || false
                 });
+                fetchTableOrdersForCache(tNum);
             }
             setBusyTables(map);
         } catch {
@@ -841,8 +856,11 @@ const WaiterDashboard: React.FC = () => {
                                                 handleChangeTableSelect(hallKey);
                                             } else {
                                                 setTableNumber(hallKey);
-                                                if (!isBusy) setActiveCategory('Hamısı');
-                                                if (isBusy) setShowLastOrders(true);
+                                                if (!isBusy) {
+                                                    setActiveCategory('Hamısı');
+                                                } else {
+                                                    setShowLastOrders(true);
+                                                }
                                             }
                                         }}
                                         className={`aspect-square rounded-2xl text-xl font-bold transition-all active:scale-95 relative flex flex-col items-center justify-center ${isBusy && !isPrinted
