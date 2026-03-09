@@ -46,7 +46,7 @@ const WaiterDashboard: React.FC = () => {
     const [activeCategory, setActiveCategory] = useState<string>('All');
     const [cartOpen, setCartOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [busyTables, setBusyTables] = useState<Map<string, string>>(new Map());
+    const [busyTables, setBusyTables] = useState<Map<string, { latestOrderAt: string; checkPrinted: boolean }>>(new Map());
     const [tableOrders, setTableOrders] = useState<TableOrder[]>([]);
     const [showLastOrders, setShowLastOrders] = useState(false);
     const [changingTable, setChangingTable] = useState<string | null>(null);
@@ -127,20 +127,39 @@ const WaiterDashboard: React.FC = () => {
             });
         });
         socket.on('table-busy', (data: { tableNumber: string; latestOrderAt: string }) => {
-            setBusyTables((prev) => new Map(prev).set(String(data.tableNumber), data.latestOrderAt));
+            setBusyTables((prev) => {
+                const next = new Map(prev);
+                next.set(String(data.tableNumber), {
+                    latestOrderAt: data.latestOrderAt,
+                    checkPrinted: false // new order resets check printed status
+                });
+                return next;
+            });
+        });
+        socket.on('table-printed', (data: { tableNumber: string }) => {
+            setBusyTables((prev) => {
+                const map = new Map(prev);
+                const ex = map.get(String(data.tableNumber));
+                if (ex) map.set(String(data.tableNumber), { ...ex, checkPrinted: true });
+                return map;
+            });
         });
         return () => {
             socket.off('table-freed');
             socket.off('table-busy');
+            socket.off('table-printed');
         };
     }, []);
 
     const fetchBusyTables = async () => {
         try {
             const { data } = await api.get('/waiter/busy-tables');
-            const map = new Map<string, string>();
+            const map = new Map<string, { latestOrderAt: string; checkPrinted: boolean }>();
             for (const entry of data) {
-                map.set(String(entry.tableNumber), entry.latestOrderAt);
+                map.set(String(entry.tableNumber), {
+                    latestOrderAt: entry.latestOrderAt,
+                    checkPrinted: entry.checkPrinted || false
+                });
             }
             setBusyTables(map);
         } catch {
@@ -608,7 +627,7 @@ const WaiterDashboard: React.FC = () => {
                                 ) : (
                                     <div className="flex gap-4">
                                         <button
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 const merged2 = new Map<string, { qty: number; price: number }>();
                                                 for (const order of tableOrders) {
                                                     for (const item of order.items) {
@@ -670,8 +689,15 @@ const WaiterDashboard: React.FC = () => {
                                                         setTimeout(() => document.body.removeChild(iframe), 500);
                                                     }, 250);
                                                 }
-                                                setShowOrderPopup(false);
-                                                toast.success('Çek çap edilir');
+
+                                                try {
+                                                    await api.post(`/waiter/table-orders/${tableNumber}/print-check`);
+                                                    toast.success('Çek çap edilir');
+                                                    setShowOrderPopup(false);
+                                                    handleBackToTables();
+                                                } catch (error) {
+                                                    toast.error('Çek çap edilərkən xəta baş verdi');
+                                                }
                                             }}
                                             className="flex-1 py-4 rounded-2xl text-lg font-bold bg-blue-500 text-white hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/25"
                                         >
@@ -757,6 +783,7 @@ const WaiterDashboard: React.FC = () => {
                                 const hallKey = `${activeHall}-${t}`;
                                 const busyAt = busyTables.get(hallKey);
                                 const isBusy = !!busyAt;
+                                const isPrinted = busyAt?.checkPrinted;
                                 return (
                                     <button
                                         key={t}
@@ -769,15 +796,17 @@ const WaiterDashboard: React.FC = () => {
                                                 if (isBusy) setShowLastOrders(true);
                                             }
                                         }}
-                                        className={`aspect-square rounded-2xl text-xl font-bold transition-all active:scale-95 relative flex flex-col items-center justify-center ${isBusy
+                                        className={`aspect-square rounded-2xl text-xl font-bold transition-all active:scale-95 relative flex flex-col items-center justify-center ${isBusy && !isPrinted
                                             ? 'bg-red-500/15 border-2 border-red-500/50 text-red-400 hover:bg-red-500/25 hover:border-red-500/70 shadow-lg shadow-red-500/10'
-                                            : 'bg-surface-800 border border-surface-700/50 text-surface-300 hover:bg-brand-500 hover:text-white hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/20 hover:scale-105'
+                                            : isBusy && isPrinted
+                                                ? 'bg-amber-500/15 border-2 border-amber-500/50 text-amber-500 hover:bg-amber-500/25 hover:border-amber-500/70 shadow-lg shadow-amber-500/10'
+                                                : 'bg-surface-800 border border-surface-700/50 text-surface-300 hover:bg-brand-500 hover:text-white hover:border-brand-500 hover:shadow-lg hover:shadow-brand-500/20 hover:scale-105'
                                             }`}
                                     >
                                         {t}
-                                        {isBusy && (
+                                        {isBusy && !isPrinted && busyAt && (
                                             <>
-                                                <span className="text-xs font-semibold text-red-400 mt-1">{formatElapsed(busyAt)}</span>
+                                                <span className="text-xs font-semibold text-red-400 mt-1">{formatElapsed(busyAt.latestOrderAt)}</span>
                                                 <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                                             </>
                                         )}
@@ -795,6 +824,7 @@ const WaiterDashboard: React.FC = () => {
                                 {halls.filter((h) => h.type === 'cabinet').map((cab) => {
                                     const busyAt = busyTables.get(cab.name);
                                     const isBusy = !!busyAt;
+                                    const isPrinted = busyAt?.checkPrinted;
                                     return (
                                         <button
                                             key={cab.name}
@@ -807,18 +837,20 @@ const WaiterDashboard: React.FC = () => {
                                                     if (isBusy) setShowLastOrders(true);
                                                 }
                                             }}
-                                            className={`py-4 px-6 rounded-2xl text-base font-bold transition-all active:scale-95 relative ${isBusy
+                                            className={`py-4 px-6 rounded-2xl text-base font-bold transition-all active:scale-95 relative ${isBusy && !isPrinted
                                                 ? 'bg-red-500/15 border-2 border-red-500/50 text-red-400 hover:bg-red-500/25 hover:border-red-500/70 shadow-lg shadow-red-500/10'
-                                                : 'bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500 hover:text-white hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20 hover:scale-105'
+                                                : isBusy && isPrinted
+                                                    ? 'bg-amber-500/15 border-2 border-amber-500/50 text-amber-500 hover:bg-amber-500/25 hover:border-amber-500/70 shadow-lg shadow-amber-500/10'
+                                                    : 'bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500 hover:text-white hover:border-purple-500 hover:shadow-lg hover:shadow-purple-500/20 hover:scale-105'
                                                 }`}
                                         >
                                             <span className="flex items-center gap-2">
                                                 🚪 {cab.name}
-                                                {isBusy && (
-                                                    <span className="text-xs font-medium text-red-400/80">{formatElapsed(busyAt)}</span>
+                                                {isBusy && !isPrinted && busyAt && (
+                                                    <span className="text-xs font-medium text-red-400/80">{formatElapsed(busyAt.latestOrderAt)}</span>
                                                 )}
                                             </span>
-                                            {isBusy && (
+                                            {isBusy && !isPrinted && busyAt && (
                                                 <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                                             )}
                                         </button>
