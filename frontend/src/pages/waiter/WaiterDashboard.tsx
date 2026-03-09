@@ -651,12 +651,6 @@ const WaiterDashboard: React.FC = () => {
                                         >
                                             Kartla ödəniş
                                         </button>
-                                        <button
-                                            onClick={() => setShowPaymentOptions(false)}
-                                            className="py-4 px-6 rounded-2xl flex-shrink-0 text-lg font-bold bg-surface-700 text-surface-200 transition-all"
-                                        >
-                                            Geri
-                                        </button>
                                     </div>
                                 ) : (tableNumber && busyTables.get(tableNumber)?.checkPrinted && cart.length === 0) ? (
                                     <div className="flex gap-4">
