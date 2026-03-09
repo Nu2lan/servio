@@ -167,6 +167,70 @@ const WaiterDashboard: React.FC = () => {
             setDeletingItem(itemName);
             await api.post(`/waiter/table-orders/${tableNumber}/delete-item`, { itemName, pin: adminPin });
             toast.success(`${itemName} silindi`);
+
+            // Find the item details from the current tableOrders before updating them
+            let deletedPrice = 0;
+            for (const order of tableOrders) {
+                const item = order.items.find((i: any) => i.name === itemName);
+                if (item) {
+                    deletedPrice = item.price;
+                    break;
+                }
+            }
+
+            // Print separate receipt for deleted item
+            const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tableNumber);
+            const displayNum = tableNumber?.includes('-') ? tableNumber?.split('-').pop() : tableNumber;
+            const hallName = tableNumber?.includes('-') ? tableNumber.substring(0, tableNumber.lastIndexOf('-')) : activeHall;
+            const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
+
+            const itemsHtml = `<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody><tr><td style="color:red; text-decoration:line-through; font-style:italic">Ləğv: ${itemName}</td><td style="text-align:center">-1</td><td style="text-align:right">-${deletedPrice.toFixed(2)}</td></tr></tbody>`;
+
+            const receiptHtml = [
+                '<!DOCTYPE html><html><head><title>Check</title>',
+                '<style>',
+                '@page { size: 80mm auto; margin: 0 }',
+                '* { margin: 0; padding: 0; box-sizing: border-box }',
+                "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
+                '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
+                'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
+                '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
+                'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
+                'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
+                '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right; color: red }',
+                '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
+                '</style></head>',
+                '<body>',
+                '<div class="pub">Artıbir</div>',
+                `<h3>${tableLabel}</h3>`,
+                '<div class="info">',
+                `<span>Ofisiant: ${user?.username || ''}</span>`,
+                `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
+                '</div>',
+                `<table>${itemsHtml}</table>`,
+                `<div class="t">LƏĞV EDİLDİ (QAYTARILACAQ): ${deletedPrice.toFixed(2)} AZN</div>`,
+                '<div class="f">LƏĞV ÇEKİ</div>',
+                '</body></html>',
+            ].join('');
+
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.top = '-10000px';
+            iframe.style.left = '-10000px';
+            iframe.style.width = '80mm';
+            iframe.style.height = '0';
+            document.body.appendChild(iframe);
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (doc) {
+                doc.open();
+                doc.write(receiptHtml);
+                doc.close();
+                setTimeout(() => {
+                    iframe.contentWindow?.print();
+                    setTimeout(() => document.body.removeChild(iframe), 500);
+                }, 250);
+            }
+
             const { data } = await api.get(`/waiter/table-orders/${tableNumber}`);
             setTableOrders(data);
             if (data.length === 0) {
@@ -523,7 +587,7 @@ const WaiterDashboard: React.FC = () => {
                             <div className="p-5 sm:p-6 bg-surface-800/50 border-t border-surface-700/50">
                                 {isEditingOrder ? (
                                     <button
-                                        onClick={() => { setIsEditingOrder(false); setAdminPin(''); }}
+                                        onClick={() => { setIsEditingOrder(false); setAdminPin(''); setShowOrderPopup(false); }}
                                         className="w-full py-4 rounded-2xl text-lg font-bold bg-surface-700 text-white hover:bg-surface-600 transition-all flex items-center justify-center gap-2"
                                     >
                                         <HiOutlineCheck className="w-6 h-6" />
