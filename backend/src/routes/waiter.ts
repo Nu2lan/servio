@@ -316,6 +316,41 @@ router.post('/table-orders/:tableNumber/print-check', async (req: AuthRequest, r
     }
 });
 
+// POST /api/waiter/table-orders/:tableNumber/pay
+router.post('/table-orders/:tableNumber/pay', async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const tableNumber = req.params.tableNumber;
+        const { method } = req.body;
+
+        if (!['cash', 'card'].includes(method)) {
+            res.status(400).json({ message: 'Yanlış ödəniş metodu.' });
+            return;
+        }
+
+        const now = new Date();
+        const updatedOrders = await Order.find({ tableNumber, status: 'confirmed' });
+
+        if (updatedOrders.length === 0) {
+            res.status(404).json({ message: 'Ödəniləcək sifariş tapılmadı.' });
+            return;
+        }
+
+        await Order.updateMany(
+            { tableNumber, status: 'confirmed' },
+            { $set: { status: 'paid', paidAt: now, paymentMethod: method } }
+        );
+
+        const io = getIO();
+        io.to('waiter').emit('table-freed', { tableNumber });
+        io.to('cashier').emit('orders-paid');
+
+        res.json({ message: 'Ödəniş qəbul edildi.' });
+    } catch (error) {
+        console.error('Pay error:', error);
+        res.status(500).json({ message: 'Server xətası.' });
+    }
+});
+
 // PATCH /api/waiter/change-table — move all confirmed orders from one table to another
 router.patch('/change-table', async (req: AuthRequest, res: Response): Promise<void> => {
     try {

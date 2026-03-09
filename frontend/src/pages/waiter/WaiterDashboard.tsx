@@ -57,6 +57,7 @@ const WaiterDashboard: React.FC = () => {
     const [adminPin, setAdminPin] = useState('');
     const [pinInput, setPinInput] = useState('');
     const [deletingItem, setDeletingItem] = useState<string | null>(null);
+    const [showPaymentOptions, setShowPaymentOptions] = useState(false);
     const [, setTick] = useState(0);
     const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -211,6 +212,18 @@ const WaiterDashboard: React.FC = () => {
             toast.error(error.response?.data?.message || 'Məhsulu silmək mümkün olmadı');
         } finally {
             setDeletingItem(null);
+        }
+    };
+
+    const handlePayment = async (method: 'cash' | 'card') => {
+        try {
+            await api.post(`/waiter/table-orders/${tableNumber}/pay`, { method });
+            toast.success('Ödəniş qəbul edildi və masa boşaldıldı');
+            setShowPaymentOptions(false);
+            setShowOrderPopup(false);
+            handleBackToTables();
+        } catch (error) {
+            toast.error('Ödəniş zamanı xəta baş verdi');
         }
     };
 
@@ -448,7 +461,7 @@ const WaiterDashboard: React.FC = () => {
 
             {/* ─── Previous Orders Popup (portal to body for full-screen overlay) ─── */}
             {showOrderPopup && tableOrders.length > 0 && createPortal(
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => !showPinModal && setShowOrderPopup(false)}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => { if (!showPinModal) { setShowOrderPopup(false); setShowPaymentOptions(false); } }}>
                     {showPinModal ? (
                         <div className="bg-surface-800 p-6 rounded-3xl w-full max-w-sm space-y-8 shadow-2xl border border-surface-700 relative z-50" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center">
@@ -624,6 +637,36 @@ const WaiterDashboard: React.FC = () => {
                                         <HiOutlineCheck className="w-6 h-6" />
                                         Bitdi
                                     </button>
+                                ) : showPaymentOptions ? (
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => handlePayment('cash')}
+                                            className="flex-1 py-4 rounded-2xl text-lg font-bold bg-green-500 text-white hover:bg-green-600 transition-all shadow-lg"
+                                        >
+                                            Nağd ödəniş
+                                        </button>
+                                        <button
+                                            onClick={() => handlePayment('card')}
+                                            className="flex-1 py-4 rounded-2xl text-lg font-bold bg-blue-500 text-white hover:bg-blue-600 transition-all shadow-lg"
+                                        >
+                                            Kartla ödəniş
+                                        </button>
+                                        <button
+                                            onClick={() => setShowPaymentOptions(false)}
+                                            className="py-4 px-6 rounded-2xl flex-shrink-0 text-lg font-bold bg-surface-700 text-surface-200 transition-all"
+                                        >
+                                            Geri
+                                        </button>
+                                    </div>
+                                ) : (tableNumber && busyTables.get(tableNumber)?.checkPrinted && cart.length === 0) ? (
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => setShowPaymentOptions(true)}
+                                            className="flex-1 py-4 rounded-2xl text-lg font-bold bg-green-500 text-white hover:bg-green-600 transition-all shadow-lg"
+                                        >
+                                            Hesabı bağla
+                                        </button>
+                                    </div>
                                 ) : (
                                     <div className="flex gap-4">
                                         <button
