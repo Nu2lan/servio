@@ -765,6 +765,7 @@ const WaiterDashboard: React.FC = () => {
                                                 handleChangeTableSelect(hallKey);
                                             } else {
                                                 setTableNumber(hallKey);
+                                                if (!isBusy) setActiveCategory('Hamısı');
                                                 if (isBusy) setShowLastOrders(true);
                                             }
                                         }}
@@ -802,6 +803,7 @@ const WaiterDashboard: React.FC = () => {
                                                     handleChangeTableSelect(cab.name);
                                                 } else {
                                                     setTableNumber(cab.name);
+                                                    if (!isBusy) setActiveCategory('Hamısı');
                                                     if (isBusy) setShowLastOrders(true);
                                                 }
                                             }}
@@ -881,7 +883,7 @@ const WaiterDashboard: React.FC = () => {
                 <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
                     {tableNumber && busyTables.has(tableNumber) && (
                         <button
-                            onClick={() => { setShowLastOrders(!showLastOrders); setActiveCategory('All'); }}
+                            onClick={() => { setShowLastOrders(!showLastOrders); setActiveCategory('Hamısı'); }}
                             className={`flex-shrink-0 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${showLastOrders
                                 ? 'bg-amber-500 text-white'
                                 : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
