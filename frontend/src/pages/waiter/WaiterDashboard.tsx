@@ -658,8 +658,8 @@ const WaiterDashboard: React.FC = () => {
 
                     {/* Change table banner */}
                     {changingTable && (
-                        <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                        <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl flex items-stretch justify-between overflow-hidden">
+                            <div className="flex items-center gap-2 p-4">
                                 <HiOutlineSwitchHorizontal className="w-5 h-5 text-amber-400" />
                                 <span className="text-sm font-semibold text-amber-300">
                                     Masa {changingTable.includes('-') ? changingTable.split('-').pop() : changingTable} köçürülür → Yeni masa seçin
@@ -667,7 +667,7 @@ const WaiterDashboard: React.FC = () => {
                             </div>
                             <button
                                 onClick={() => setChangingTable(null)}
-                                className="text-sm px-5 py-2.5 rounded-xl bg-surface-700 text-surface-300 hover:bg-surface-600 font-semibold transition-all"
+                                className="text-sm px-6 rounded-none bg-surface-700 text-surface-200 hover:bg-surface-600 font-semibold transition-all flex items-center justify-center"
                             >
                                 Ləğv et
                             </button>
