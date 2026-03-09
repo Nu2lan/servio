@@ -458,303 +458,315 @@ const WaiterDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
+        </div>
+    );
 
-            {/* ─── Previous Orders Popup (portal to body for full-screen overlay) ─── */}
-            {showOrderPopup && tableOrders.length > 0 && createPortal(
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => { if (!showPinModal) { setShowOrderPopup(false); setShowPaymentOptions(false); } }}>
-                    {showPinModal ? (
-                        <div className="bg-surface-800 p-6 rounded-3xl w-full max-w-sm space-y-8 shadow-2xl border border-surface-700 relative z-50" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center">
-                                <h3 className="text-xl font-bold text-surface-100">Kassir / Admin PİN</h3>
-                                <button onClick={() => { setShowPinModal(false); setPinInput(''); }} className="text-surface-400 p-2 hover:bg-surface-700 rounded-full transition-colors">
-                                    <HiOutlineX className="w-6 h-6" />
-                                </button>
-                            </div>
-                            <div className="space-y-8">
-                                <div className="flex justify-center gap-6">
-                                    {[0, 1, 2, 3].map((i) => (
-                                        <div key={i} className={`w-5 h-5 rounded-full transition-colors duration-200 ${pinInput.length > i ? 'bg-brand-400 shadow-[0_0_12px_rgba(250,204,21,0.6)]' : 'bg-surface-700'}`} />
-                                    ))}
-                                </div>
-                                <div className="grid grid-cols-3 gap-4 max-w-[320px] mx-auto">
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(digit => (
-                                        <button
-                                            key={digit}
-                                            className={`h-20 rounded-2xl bg-surface-700 text-3xl font-bold text-surface-100 hover:bg-surface-600 active:bg-surface-500 transition-colors shadow-lg ${digit === 0 ? 'col-start-2' : ''}`}
-                                            onClick={() => {
-                                                const newPin = pinInput + digit;
-                                                if (newPin.length <= 4) {
-                                                    setPinInput(newPin);
-                                                    if (newPin.length === 4) handleVerifyPin(newPin);
-                                                }
-                                            }}
-                                        >
-                                            {digit}
-                                        </button>
-                                    ))}
-                                    <button
-                                        className="col-start-3 h-20 flex items-center justify-center rounded-2xl bg-surface-700/50 text-surface-400 hover:bg-surface-600 hover:text-surface-200 active:bg-surface-500 transition-colors shadow-lg"
-                                        onClick={() => setPinInput(prev => prev.slice(0, -1))}
-                                    >
-                                        <HiOutlineArrowLeft className="w-8 h-8" />
-                                    </button>
-                                </div>
-                            </div>
+    // ─── Change Table Button (Static separate block) ───
+    const changeTableButton = tableNumber && busyTables.has(tableNumber) && (
+        <button
+            onClick={handleChangeTable}
+            className="w-full h-[70px] mb-4 card flex items-center justify-center gap-2 transition-all cursor-pointer
+                border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 active:scale-[0.98] text-amber-500"
+        >
+            <HiOutlineSwitchHorizontal className="w-5 h-5 shrink-0" />
+            <span className="font-semibold text-[15px] whitespace-nowrap">Masanı Dəyiş</span>
+        </button>
+    );
+
+    // ─── Previous Orders Popup (portal to body for full-screen overlay) ───
+    const previousOrdersPopup = showOrderPopup && tableOrders.length > 0 && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => { if (!showPinModal) { setShowOrderPopup(false); setShowPaymentOptions(false); } }}>
+            {showPinModal ? (
+                <div className="bg-surface-800 p-6 rounded-3xl w-full max-w-sm space-y-8 shadow-2xl border border-surface-700 relative z-50" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-bold text-surface-100">Kassir / Admin PİN</h3>
+                        <button onClick={() => { setShowPinModal(false); setPinInput(''); }} className="text-surface-400 p-2 hover:bg-surface-700 rounded-full transition-colors">
+                            <HiOutlineX className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="space-y-8">
+                        <div className="flex justify-center gap-6">
+                            {[0, 1, 2, 3].map((i) => (
+                                <div key={i} className={`w-5 h-5 rounded-full transition-colors duration-200 ${pinInput.length > i ? 'bg-brand-400 shadow-[0_0_12px_rgba(250,204,21,0.6)]' : 'bg-surface-700'}`} />
+                            ))}
                         </div>
-                    ) : (
-                        <div className="bg-surface-900 border border-surface-700/50 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-between p-5 sm:p-6 bg-surface-800/50 border-b border-surface-700/50">
-                                <h3 className="text-xl sm:text-2xl font-black text-surface-100 flex items-center gap-3">
-                                    <HiOutlineClipboardList className="w-7 h-7 text-brand-400" />
-                                    Masa {tableNumber?.includes('-') ? tableNumber.split('-').pop() : tableNumber}
-                                    {isEditingOrder && <span className="text-xs sm:text-sm bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/20 ml-2">Redaktə Rejimi</span>}
-                                </h3>
-                                <button onClick={() => setShowOrderPopup(false)} className="text-surface-400 hover:text-white bg-surface-800 p-2.5 rounded-full hover:bg-red-500 transition-all">
-                                    <HiOutlineX className="w-6 h-6" />
+                        <div className="grid grid-cols-3 gap-4 max-w-[320px] mx-auto">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(digit => (
+                                <button
+                                    key={digit}
+                                    className={`h-20 rounded-2xl bg-surface-700 text-3xl font-bold text-surface-100 hover:bg-surface-600 active:bg-surface-500 transition-colors shadow-lg ${digit === 0 ? 'col-start-2' : ''}`}
+                                    onClick={() => {
+                                        const newPin = pinInput + digit;
+                                        if (newPin.length <= 4) {
+                                            setPinInput(newPin);
+                                            if (newPin.length === 4) handleVerifyPin(newPin);
+                                        }
+                                    }}
+                                >
+                                    {digit}
+                                </button>
+                            ))}
+                            <button
+                                className="col-start-3 h-20 flex items-center justify-center rounded-2xl bg-surface-700/50 text-surface-400 hover:bg-surface-600 hover:text-surface-200 active:bg-surface-500 transition-colors shadow-lg"
+                                onClick={() => setPinInput(prev => prev.slice(0, -1))}
+                            >
+                                <HiOutlineArrowLeft className="w-8 h-8" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-surface-900 border border-surface-700/50 rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between p-5 sm:p-6 bg-surface-800/50 border-b border-surface-700/50">
+                        <h3 className="text-xl sm:text-2xl font-black text-surface-100 flex items-center gap-3">
+                            <HiOutlineClipboardList className="w-7 h-7 text-brand-400" />
+                            Masa {tableNumber?.includes('-') ? tableNumber.split('-').pop() : tableNumber}
+                            {isEditingOrder && <span className="text-xs sm:text-sm bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/20 ml-2">Redaktə Rejimi</span>}
+                        </h3>
+                        <button onClick={() => setShowOrderPopup(false)} className="text-surface-400 hover:text-white bg-surface-800 p-2.5 rounded-full hover:bg-red-500 transition-all">
+                            <HiOutlineX className="w-6 h-6" />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-2">
+                        {(() => {
+                            const merged = new Map<string, { qty: number; price: number }>();
+                            for (const order of tableOrders) {
+                                for (const item of order.items) {
+                                    const existing = merged.get(item.name);
+                                    if (existing) {
+                                        existing.qty += item.quantity;
+                                    } else {
+                                        merged.set(item.name, { qty: item.quantity, price: item.price });
+                                    }
+                                }
+                            }
+                            const entries = Array.from(merged.entries());
+                            const total = entries.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
+                            return (
+                                <>
+                                    {entries.map(([name, { qty, price }]) => (
+                                        <div key={name} className="flex items-center justify-between py-3 border-b border-surface-800 last:border-0 group">
+                                            <div className="flex flex-col">
+                                                <span className="text-base sm:text-lg font-medium text-surface-200">{name}</span>
+                                                <span className="text-sm text-surface-500">{price.toFixed(2)} AZN</span>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <div className="text-lg font-bold text-surface-100">×{qty}</div>
+                                                    <div className="text-sm font-semibold text-brand-400">{(price * qty).toFixed(2)} AZN</div>
+                                                </div>
+                                                {isEditingOrder && (
+                                                    <button
+                                                        onClick={() => handleDeleteOrderItem(name)}
+                                                        disabled={deletingItem === name}
+                                                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shrink-0"
+                                                    >
+                                                        {deletingItem === name ? (
+                                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                        ) : (
+                                                            <HiOutlineMinus className="w-5 h-5" />
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center justify-between pt-5 mt-4 border-t border-surface-700">
+                                        <span className="text-xl font-bold text-surface-100">Cəmi</span>
+                                        <span className="text-2xl font-black text-brand-400">{total.toFixed(2)} AZN</span>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+
+                    <div className="p-5 sm:p-6 bg-surface-800/50 border-t border-surface-700/50">
+                        {isEditingOrder ? (
+                            <button
+                                onClick={() => {
+                                    if (deletedItemsToPrint.length > 0) {
+                                        const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tableNumber);
+                                        const displayNum = tableNumber?.includes('-') ? tableNumber?.split('-').pop() : tableNumber;
+                                        const hallName = tableNumber?.includes('-') ? tableNumber.substring(0, tableNumber.lastIndexOf('-')) : activeHall;
+                                        const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
+
+                                        const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' +
+                                            deletedItemsToPrint.map(item => `<tr><td style="color:red; text-decoration:line-through; font-style:italic">Ləğv: ${item.name}</td><td style="text-align:center">-1</td><td style="text-align:right">-${item.price.toFixed(2)}</td></tr>`).join('') + '</tbody>';
+
+                                        const totalDeletedPrice = deletedItemsToPrint.reduce((sum, item) => sum + item.price, 0);
+
+                                        const receiptHtml = [
+                                            '<!DOCTYPE html><html><head><title>Check</title>',
+                                            '<style>',
+                                            '@page { size: 80mm auto; margin: 0 }',
+                                            '* { margin: 0; padding: 0; box-sizing: border-box }',
+                                            "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
+                                            '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
+                                            'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
+                                            '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
+                                            'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
+                                            'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
+                                            '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right; color: red }',
+                                            '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
+                                            '</style></head>',
+                                            '<body>',
+                                            '<div class="pub">Artıbir</div>',
+                                            `<h3>${tableLabel}</h3>`,
+                                            '<div class="info">',
+                                            `<span>Ofisiant: ${user?.username || ''}</span>`,
+                                            `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
+                                            '</div>',
+                                            `<table>${itemsHtml}</table>`,
+                                            `<div class="t">LƏĞV EDİLDİ (QAYTARILACAQ): ${totalDeletedPrice.toFixed(2)} AZN</div>`,
+                                            '<div class="f">LƏĞV ÇEKİ</div>',
+                                            '</body></html>',
+                                        ].join('');
+
+                                        const iframe = document.createElement('iframe');
+                                        iframe.style.position = 'fixed';
+                                        iframe.style.top = '-10000px';
+                                        iframe.style.left = '-10000px';
+                                        iframe.style.width = '80mm';
+                                        iframe.style.height = '0';
+                                        document.body.appendChild(iframe);
+                                        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                                        if (doc) {
+                                            doc.open();
+                                            doc.write(receiptHtml);
+                                            doc.close();
+                                            setTimeout(() => {
+                                                iframe.contentWindow?.print();
+                                                setTimeout(() => document.body.removeChild(iframe), 500);
+                                            }, 250);
+                                        }
+                                        setDeletedItemsToPrint([]);
+                                    }
+                                    setIsEditingOrder(false);
+                                    setAdminPin('');
+                                    setShowOrderPopup(false);
+                                }}
+                                className="w-full py-4 rounded-2xl text-lg font-bold bg-surface-700 text-white hover:bg-surface-600 transition-all flex items-center justify-center gap-2"
+                            >
+                                <HiOutlineCheck className="w-6 h-6" />
+                                Bitdi
+                            </button>
+                        ) : showPaymentOptions ? (
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => handlePayment('cash')}
+                                    className="flex-1 py-4 rounded-2xl text-lg font-bold bg-green-500 text-white hover:bg-green-600 transition-all shadow-lg"
+                                >
+                                    Nağd ödəniş
+                                </button>
+                                <button
+                                    onClick={() => handlePayment('card')}
+                                    className="flex-1 py-4 rounded-2xl text-lg font-bold bg-blue-500 text-white hover:bg-blue-600 transition-all shadow-lg"
+                                >
+                                    Kartla ödəniş
                                 </button>
                             </div>
-
-                            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-2">
-                                {(() => {
-                                    const merged = new Map<string, { qty: number; price: number }>();
-                                    for (const order of tableOrders) {
-                                        for (const item of order.items) {
-                                            const existing = merged.get(item.name);
-                                            if (existing) {
-                                                existing.qty += item.quantity;
-                                            } else {
-                                                merged.set(item.name, { qty: item.quantity, price: item.price });
+                        ) : (tableNumber && busyTables.get(tableNumber)?.checkPrinted && cart.length === 0) ? (
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setShowPaymentOptions(true)}
+                                    className="flex-1 py-4 rounded-2xl text-lg font-bold bg-green-500 text-white hover:bg-green-600 transition-all shadow-lg"
+                                >
+                                    Hesabı bağla
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={async () => {
+                                        const merged2 = new Map<string, { qty: number; price: number }>();
+                                        for (const order of tableOrders) {
+                                            for (const item of order.items) {
+                                                const ex = merged2.get(item.name);
+                                                if (ex) { ex.qty += item.quantity; }
+                                                else { merged2.set(item.name, { qty: item.quantity, price: item.price }); }
                                             }
                                         }
-                                    }
-                                    const entries = Array.from(merged.entries());
-                                    const total = entries.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
-                                    return (
-                                        <>
-                                            {entries.map(([name, { qty, price }]) => (
-                                                <div key={name} className="flex items-center justify-between py-3 border-b border-surface-800 last:border-0 group">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-base sm:text-lg font-medium text-surface-200">{name}</span>
-                                                        <span className="text-sm text-surface-500">{price.toFixed(2)} AZN</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="text-right">
-                                                            <div className="text-lg font-bold text-surface-100">×{qty}</div>
-                                                            <div className="text-sm font-semibold text-brand-400">{(price * qty).toFixed(2)} AZN</div>
-                                                        </div>
-                                                        {isEditingOrder && (
-                                                            <button
-                                                                onClick={() => handleDeleteOrderItem(name)}
-                                                                disabled={deletingItem === name}
-                                                                className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shrink-0"
-                                                            >
-                                                                {deletingItem === name ? (
-                                                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                                ) : (
-                                                                    <HiOutlineMinus className="w-5 h-5" />
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            <div className="flex items-center justify-between pt-5 mt-4 border-t border-surface-700">
-                                                <span className="text-xl font-bold text-surface-100">Cəmi</span>
-                                                <span className="text-2xl font-black text-brand-400">{total.toFixed(2)} AZN</span>
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-                            </div>
+                                        const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tableNumber);
+                                        const displayNum = tableNumber?.includes('-') ? tableNumber.split('-').pop() : tableNumber;
+                                        const hallName = tableNumber?.includes('-') ? tableNumber.substring(0, tableNumber.lastIndexOf('-')) : activeHall;
+                                        const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
+                                        const entries2 = Array.from(merged2.entries());
+                                        const receiptTotal = entries2.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
+                                        const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' + entries2.map(([name, { qty, price }]) =>
+                                            `<tr><td>${name}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${(price * qty).toFixed(2)}</td></tr>`
+                                        ).join('') + '</tbody>';
+                                        const receiptHtml = [
+                                            '<!DOCTYPE html><html><head><title>Check</title>',
+                                            '<style>',
+                                            '@page { size: 80mm auto; margin: 0 }',
+                                            '* { margin: 0; padding: 0; box-sizing: border-box }',
+                                            "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
+                                            '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
+                                            'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
+                                            '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
+                                            'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
+                                            'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
+                                            '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right }',
+                                            '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
+                                            '</style></head>',
+                                            '<body>',
+                                            '<div class="pub">Artıbir</div>',
+                                            `<h3>${tableLabel}</h3>`,
+                                            '<div class="info">',
+                                            `<span>Ofisiant: ${user?.username || ''}</span>`,
+                                            `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
+                                            '</div>',
+                                            `<table>${itemsHtml}</table>`,
+                                            `<div class="t">Cəmi: ${receiptTotal.toFixed(2)} AZN</div>`,
+                                            '<div class="f">Təşəkkürlər</div>',
+                                            '</body></html>',
+                                        ].join('');
 
-                            <div className="p-5 sm:p-6 bg-surface-800/50 border-t border-surface-700/50">
-                                {isEditingOrder ? (
-                                    <button
-                                        onClick={() => {
-                                            if (deletedItemsToPrint.length > 0) {
-                                                const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tableNumber);
-                                                const displayNum = tableNumber?.includes('-') ? tableNumber?.split('-').pop() : tableNumber;
-                                                const hallName = tableNumber?.includes('-') ? tableNumber.substring(0, tableNumber.lastIndexOf('-')) : activeHall;
-                                                const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
+                                        const iframe = document.createElement('iframe');
+                                        iframe.style.position = 'fixed';
+                                        iframe.style.top = '-10000px';
+                                        iframe.style.left = '-10000px';
+                                        iframe.style.width = '80mm';
+                                        iframe.style.height = '0';
+                                        document.body.appendChild(iframe);
+                                        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                                        if (doc) {
+                                            doc.open();
+                                            doc.write(receiptHtml);
+                                            doc.close();
+                                            setTimeout(() => {
+                                                iframe.contentWindow?.print();
+                                                setTimeout(() => document.body.removeChild(iframe), 500);
+                                            }, 250);
+                                        }
 
-                                                const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' +
-                                                    deletedItemsToPrint.map(item => `<tr><td style="color:red; text-decoration:line-through; font-style:italic">Ləğv: ${item.name}</td><td style="text-align:center">-1</td><td style="text-align:right">-${item.price.toFixed(2)}</td></tr>`).join('') + '</tbody>';
-
-                                                const totalDeletedPrice = deletedItemsToPrint.reduce((sum, item) => sum + item.price, 0);
-
-                                                const receiptHtml = [
-                                                    '<!DOCTYPE html><html><head><title>Check</title>',
-                                                    '<style>',
-                                                    '@page { size: 80mm auto; margin: 0 }',
-                                                    '* { margin: 0; padding: 0; box-sizing: border-box }',
-                                                    "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
-                                                    '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
-                                                    'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
-                                                    '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
-                                                    'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
-                                                    'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
-                                                    '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right; color: red }',
-                                                    '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
-                                                    '</style></head>',
-                                                    '<body>',
-                                                    '<div class="pub">Artıbir</div>',
-                                                    `<h3>${tableLabel}</h3>`,
-                                                    '<div class="info">',
-                                                    `<span>Ofisiant: ${user?.username || ''}</span>`,
-                                                    `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
-                                                    '</div>',
-                                                    `<table>${itemsHtml}</table>`,
-                                                    `<div class="t">LƏĞV EDİLDİ (QAYTARILACAQ): ${totalDeletedPrice.toFixed(2)} AZN</div>`,
-                                                    '<div class="f">LƏĞV ÇEKİ</div>',
-                                                    '</body></html>',
-                                                ].join('');
-
-                                                const iframe = document.createElement('iframe');
-                                                iframe.style.position = 'fixed';
-                                                iframe.style.top = '-10000px';
-                                                iframe.style.left = '-10000px';
-                                                iframe.style.width = '80mm';
-                                                iframe.style.height = '0';
-                                                document.body.appendChild(iframe);
-                                                const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                                                if (doc) {
-                                                    doc.open();
-                                                    doc.write(receiptHtml);
-                                                    doc.close();
-                                                    setTimeout(() => {
-                                                        iframe.contentWindow?.print();
-                                                        setTimeout(() => document.body.removeChild(iframe), 500);
-                                                    }, 250);
-                                                }
-                                                setDeletedItemsToPrint([]);
-                                            }
-                                            setIsEditingOrder(false);
-                                            setAdminPin('');
+                                        try {
+                                            await api.post(`/waiter/table-orders/${tableNumber}/print-check`);
+                                            toast.success('Çek çap edilir');
                                             setShowOrderPopup(false);
-                                        }}
-                                        className="w-full py-4 rounded-2xl text-lg font-bold bg-surface-700 text-white hover:bg-surface-600 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <HiOutlineCheck className="w-6 h-6" />
-                                        Bitdi
-                                    </button>
-                                ) : showPaymentOptions ? (
-                                    <div className="flex gap-4">
-                                        <button
-                                            onClick={() => handlePayment('cash')}
-                                            className="flex-1 py-4 rounded-2xl text-lg font-bold bg-green-500 text-white hover:bg-green-600 transition-all shadow-lg"
-                                        >
-                                            Nağd ödəniş
-                                        </button>
-                                        <button
-                                            onClick={() => handlePayment('card')}
-                                            className="flex-1 py-4 rounded-2xl text-lg font-bold bg-blue-500 text-white hover:bg-blue-600 transition-all shadow-lg"
-                                        >
-                                            Kartla ödəniş
-                                        </button>
-                                    </div>
-                                ) : (tableNumber && busyTables.get(tableNumber)?.checkPrinted && cart.length === 0) ? (
-                                    <div className="flex gap-4">
-                                        <button
-                                            onClick={() => setShowPaymentOptions(true)}
-                                            className="flex-1 py-4 rounded-2xl text-lg font-bold bg-green-500 text-white hover:bg-green-600 transition-all shadow-lg"
-                                        >
-                                            Hesabı bağla
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="flex gap-4">
-                                        <button
-                                            onClick={async () => {
-                                                const merged2 = new Map<string, { qty: number; price: number }>();
-                                                for (const order of tableOrders) {
-                                                    for (const item of order.items) {
-                                                        const ex = merged2.get(item.name);
-                                                        if (ex) { ex.qty += item.quantity; }
-                                                        else { merged2.set(item.name, { qty: item.quantity, price: item.price }); }
-                                                    }
-                                                }
-                                                const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tableNumber);
-                                                const displayNum = tableNumber?.includes('-') ? tableNumber.split('-').pop() : tableNumber;
-                                                const hallName = tableNumber?.includes('-') ? tableNumber.substring(0, tableNumber.lastIndexOf('-')) : activeHall;
-                                                const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
-                                                const entries2 = Array.from(merged2.entries());
-                                                const receiptTotal = entries2.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
-                                                const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' + entries2.map(([name, { qty, price }]) =>
-                                                    `<tr><td>${name}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${(price * qty).toFixed(2)}</td></tr>`
-                                                ).join('') + '</tbody>';
-                                                const receiptHtml = [
-                                                    '<!DOCTYPE html><html><head><title>Check</title>',
-                                                    '<style>',
-                                                    '@page { size: 80mm auto; margin: 0 }',
-                                                    '* { margin: 0; padding: 0; box-sizing: border-box }',
-                                                    "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
-                                                    '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
-                                                    'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
-                                                    '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
-                                                    'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
-                                                    'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
-                                                    '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right }',
-                                                    '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
-                                                    '</style></head>',
-                                                    '<body>',
-                                                    '<div class="pub">Artıbir</div>',
-                                                    `<h3>${tableLabel}</h3>`,
-                                                    '<div class="info">',
-                                                    `<span>Ofisiant: ${user?.username || ''}</span>`,
-                                                    `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
-                                                    '</div>',
-                                                    `<table>${itemsHtml}</table>`,
-                                                    `<div class="t">Cəmi: ${receiptTotal.toFixed(2)} AZN</div>`,
-                                                    '<div class="f">Təşəkkürlər</div>',
-                                                    '</body></html>',
-                                                ].join('');
-
-                                                const iframe = document.createElement('iframe');
-                                                iframe.style.position = 'fixed';
-                                                iframe.style.top = '-10000px';
-                                                iframe.style.left = '-10000px';
-                                                iframe.style.width = '80mm';
-                                                iframe.style.height = '0';
-                                                document.body.appendChild(iframe);
-                                                const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                                                if (doc) {
-                                                    doc.open();
-                                                    doc.write(receiptHtml);
-                                                    doc.close();
-                                                    setTimeout(() => {
-                                                        iframe.contentWindow?.print();
-                                                        setTimeout(() => document.body.removeChild(iframe), 500);
-                                                    }, 250);
-                                                }
-
-                                                try {
-                                                    await api.post(`/waiter/table-orders/${tableNumber}/print-check`);
-                                                    toast.success('Çek çap edilir');
-                                                    setShowOrderPopup(false);
-                                                    handleBackToTables();
-                                                } catch (error) {
-                                                    toast.error('Çek çap edilərkən xəta baş verdi');
-                                                }
-                                            }}
-                                            className="flex-1 py-4 rounded-2xl text-lg font-bold bg-blue-500 text-white hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/25"
-                                        >
-                                            Çek Çap Et
-                                        </button>
-                                        <button
-                                            onClick={() => setShowPinModal(true)}
-                                            className="flex-1 py-4 rounded-2xl text-lg font-bold bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all border border-red-500/20"
-                                        >
-                                            Sifarişi Sil
-                                        </button>
-                                    </div>
-                                )}
+                                            handleBackToTables();
+                                        } catch (error) {
+                                            toast.error('Çek çap edilərkən xəta baş verdi');
+                                        }
+                                    }}
+                                    className="flex-1 py-4 rounded-2xl text-lg font-bold bg-blue-500 text-white hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/25"
+                                >
+                                    Çek Çap Et
+                                </button>
+                                <button
+                                    onClick={() => setShowPinModal(true)}
+                                    className="flex-1 py-4 rounded-2xl text-lg font-bold bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all border border-red-500/20"
+                                >
+                                    Sifarişi Sil
+                                </button>
                             </div>
-                        </div>
-                    )}
-                </div>,
-                document.body
+                        )}
+                    </div>
+                </div>
             )}
-        </div>
+        </div>,
+        document.body
     );
 
 
@@ -1002,17 +1014,6 @@ const WaiterDashboard: React.FC = () => {
 
                         {tableNumber && busyTables.has(tableNumber) && (
                             <button
-                                onClick={handleChangeTable}
-                                className="w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2
-                                    bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25"
-                            >
-                                <HiOutlineSwitchHorizontal className="w-4 h-4" />
-                                Masanı Dəyiş
-                            </button>
-                        )}
-
-                        {tableNumber && busyTables.has(tableNumber) && (
-                            <button
                                 onClick={() => { setShowLastOrders(!showLastOrders); setActiveCategory('Hamısı'); }}
                                 className={`w-full px-4 py-3.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${showLastOrders
                                     ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
@@ -1132,8 +1133,11 @@ const WaiterDashboard: React.FC = () => {
 
                 {/* Right sidebar — Desktop only */}
                 <div className="w-72 flex-shrink-0 hidden lg:block">
-                    <div className="card sticky top-24">
-                        {cartContent}
+                    <div className="sticky top-24">
+                        {changeTableButton}
+                        <div className="card">
+                            {cartContent}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1174,12 +1178,13 @@ const WaiterDashboard: React.FC = () => {
                                     <HiOutlineX className="w-5 h-5" />
                                 </button>
                             </div>
+                            {changeTableButton}
                             {cartContent}
                         </div>
                     </div>
-                )
-            }
-        </Layout >
+                )}
+            {previousOrdersPopup}
+        </Layout>
     );
 };
 
