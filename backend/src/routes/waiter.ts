@@ -236,18 +236,30 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
 router.get('/busy-tables', async (_req: AuthRequest, res: Response): Promise<void> => {
     try {
         const orders = await Order.find({ status: 'confirmed' })
-            .select('tableNumber createdAt')
+            .select('tableNumber createdAt checkPrinted')
             .sort({ createdAt: -1 });
-        const tableMap: Record<string, string> = {};
+
+        const tableMap: Record<string, { latestOrderAt: string; checkPrinted: boolean }> = {};
         for (const o of orders) {
             const t = o.tableNumber;
             if (!tableMap[t]) {
-                tableMap[t] = (o as any).createdAt.toISOString();
+                tableMap[t] = {
+                    latestOrderAt: (o as any).createdAt.toISOString(),
+                    checkPrinted: o.checkPrinted || false
+                };
+            } else {
+                // Determine if the table is considered 'printed'. We can assume it's printed if the most recent order is printed.
+                // Or rather, if all active orders for this table are printed. Let's do logical AND
+                if (!o.checkPrinted) {
+                    tableMap[t].checkPrinted = false;
+                }
             }
         }
-        const result = Object.entries(tableMap).map(([tableNumber, latestOrderAt]) => ({
+
+        const result = Object.entries(tableMap).map(([tableNumber, info]) => ({
             tableNumber,
-            latestOrderAt,
+            latestOrderAt: info.latestOrderAt,
+            checkPrinted: info.checkPrinted,
         }));
         res.json(result);
     } catch (error) {
@@ -279,6 +291,27 @@ router.get('/orders', async (req: AuthRequest, res: Response): Promise<void> => 
 
         res.json(orders);
     } catch (error) {
+        res.status(500).json({ message: 'Server xətası.' });
+    }
+});
+
+// POST /api/waiter/table-orders/:tableNumber/print-check
+router.post('/table-orders/:tableNumber/print-check', async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const tableNumber = req.params.tableNumber;
+
+        await Order.updateMany(
+            { tableNumber, status: 'confirmed' },
+            { $set: { checkPrinted: true } }
+        );
+
+        const io = getIO();
+        // Notify waiters that check was printed (they might want to hide timer and change color)
+        io.to('waiter').emit('table-printed', { tableNumber });
+
+        res.json({ message: 'Çek çap edildi kimi işarələndi.' });
+    } catch (error) {
+        console.error('Print check error:', error);
         res.status(500).json({ message: 'Server xətası.' });
     }
 });
