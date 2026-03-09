@@ -72,6 +72,46 @@ router.patch('/orders/:id/pay', async (req: AuthRequest, res: Response): Promise
     }
 });
 
+// PATCH /api/cashier/orders/pay-batch — mark multiple orders as paid at once
+router.patch('/orders/pay-batch', async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { orderIds } = req.body;
+        if (!Array.isArray(orderIds) || orderIds.length === 0) {
+            res.status(400).json({ message: 'orderIds array is required.' });
+            return;
+        }
+
+        const now = new Date();
+        await Order.updateMany(
+            { _id: { $in: orderIds }, status: 'confirmed' },
+            { $set: { status: 'paid', paidAt: now } }
+        );
+
+        const updatedOrders = await Order.find({ _id: { $in: orderIds } })
+            .select('tableNumber items.name items.quantity items.price totalPrice status paidAt createdBy checkPrinted')
+            .populate('createdBy', 'username');
+
+        const io = getIO();
+        // Notify kitchen
+        for (const order of updatedOrders) {
+            io.to('kitchen').emit('order-updated', { _id: order._id, status: order.status });
+        }
+
+        // Check if tables are fully paid and should be freed
+        const tableNumbers = [...new Set(updatedOrders.map(o => o.tableNumber))];
+        for (const tn of tableNumbers) {
+            const remaining = await Order.countDocuments({ tableNumber: tn, status: 'confirmed' });
+            if (remaining === 0) {
+                io.to('waiter').emit('table-freed', { tableNumber: tn });
+            }
+        }
+
+        res.json(updatedOrders);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error.' });
+    }
+});
+
 // PATCH /api/cashier/orders/print-check — mark orders as check printed
 router.patch('/orders/print-check', async (req: AuthRequest, res: Response): Promise<void> => {
     try {

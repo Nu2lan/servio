@@ -12,11 +12,11 @@ const router = Router();
 // All waiter routes require waiter role
 router.use(authenticate, authorize('waiter'));
 
-// GET /api/waiter/menu — names only, no prices
+// GET /api/waiter/menu — menu items with prices
 router.get('/menu', async (_req: AuthRequest, res: Response): Promise<void> => {
     try {
         const items = await MenuItem.find({ isActive: true })
-            .select('name category')
+            .select('name category price')
             .sort({ category: 1, name: 1 });
         res.json(items);
     } catch (error) {
@@ -261,7 +261,7 @@ router.get('/table-orders/:tableNumber', async (req: AuthRequest, res: Response)
             tableNumber: req.params.tableNumber,
             status: 'confirmed',
         })
-            .select('items.name items.quantity createdAt')
+            .select('items.name items.quantity items.price createdAt')
             .sort({ createdAt: -1 });
         res.json(orders);
     } catch (error) {
@@ -278,6 +278,60 @@ router.get('/orders', async (req: AuthRequest, res: Response): Promise<void> => 
 
         res.json(orders);
     } catch (error) {
+        res.status(500).json({ message: 'Server error.' });
+    }
+});
+
+// PATCH /api/waiter/change-table — move all confirmed orders from one table to another
+router.patch('/change-table', async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { fromTable, toTable } = req.body;
+
+        if (!fromTable || !toTable) {
+            res.status(400).json({ message: 'fromTable and toTable are required.' });
+            return;
+        }
+
+        if (fromTable === toTable) {
+            res.status(400).json({ message: 'Cannot change to the same table.' });
+            return;
+        }
+
+        // Update all confirmed orders from old table to new table
+        const result = await Order.updateMany(
+            { tableNumber: fromTable, status: 'confirmed' },
+            { $set: { tableNumber: toTable } }
+        );
+
+        if (result.modifiedCount === 0) {
+            res.status(404).json({ message: 'No confirmed orders found for this table.' });
+            return;
+        }
+
+        const io = getIO();
+
+        // Check if old table still has confirmed orders (shouldn't, but just in case)
+        const remainingOld = await Order.countDocuments({ tableNumber: fromTable, status: 'confirmed' });
+        if (remainingOld === 0) {
+            io.to('waiter').emit('table-freed', { tableNumber: fromTable });
+        }
+
+        // Notify that new table is busy
+        const latestOrder = await Order.findOne({ tableNumber: toTable, status: 'confirmed' })
+            .sort({ createdAt: -1 });
+        if (latestOrder) {
+            io.to('waiter').emit('table-busy', {
+                tableNumber: toTable,
+                latestOrderAt: (latestOrder as any).createdAt?.toISOString() || new Date().toISOString(),
+            });
+        }
+
+        // Notify cashier about the table change so they can refresh
+        io.to('cashier').emit('table-changed', { fromTable, toTable });
+
+        res.json({ message: `${result.modifiedCount} order(s) moved from ${fromTable} to ${toTable}.` });
+    } catch (error) {
+        console.error('Change table error:', error);
         res.status(500).json({ message: 'Server error.' });
     }
 });
