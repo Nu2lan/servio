@@ -24,12 +24,12 @@ interface InventoryLog {
 }
 
 const adminNav = [
-    { label: 'Dashboard', path: '/admin' },
-    { label: 'Menu', path: '/admin/menu' },
-    { label: 'Inventory', path: '/admin/inventory' },
-    { label: 'Users', path: '/admin/users' },
-    { label: 'Reports', path: '/admin/reports' },
-    { label: 'Settings', path: '/admin/settings' },
+    { label: 'Əsas səhifə', path: '/admin' },
+    { label: 'Menyu', path: '/admin/menu' },
+    { label: 'Anbar', path: '/admin/inventory' },
+    { label: 'İstifadəçilər', path: '/admin/users' },
+    { label: 'Hesabatlar', path: '/admin/reports' },
+    { label: 'Tənzimləmələr', path: '/admin/settings' },
 ];
 
 const Reports: React.FC = () => {
@@ -49,7 +49,7 @@ const Reports: React.FC = () => {
             const { data } = await api.get('/admin/reports/orders');
             setOrders(data);
         } catch {
-            toast.error('Failed to load orders');
+            toast.error('Sifarişləri yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
         }
@@ -61,16 +61,16 @@ const Reports: React.FC = () => {
             const { data } = await api.get('/admin/reports/inventory');
             setLogs(data);
         } catch {
-            toast.error('Failed to load inventory logs');
+            toast.error('Anbar tarixçəsini yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <Layout title="Admin Panel" navItems={adminNav}>
+        <Layout title="Admin Paneli" navItems={adminNav}>
             <div className="space-y-6">
-                <h2 className="text-xl font-bold text-surface-100">Reports</h2>
+                <h2 className="text-xl font-bold text-surface-100">Hesabatlar</h2>
 
                 {/* Tabs */}
                 <div className="flex gap-2">
@@ -79,14 +79,14 @@ const Reports: React.FC = () => {
                         className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === 'orders' ? 'bg-brand-500 text-white' : 'bg-surface-800 text-surface-400 hover:text-surface-200'
                             }`}
                     >
-                        Order History
+                        Sifariş Tarixçəsi
                     </button>
                     <button
                         onClick={() => setTab('inventory')}
                         className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === 'inventory' ? 'bg-brand-500 text-white' : 'bg-surface-800 text-surface-400 hover:text-surface-200'
                             }`}
                     >
-                        Inventory Usage
+                        Anbar İstifadəsi
                     </button>
                 </div>
 
@@ -97,7 +97,7 @@ const Reports: React.FC = () => {
                 ) : tab === 'orders' ? (
                     orders.length === 0 ? (
                         <div className="card text-center py-12">
-                            <p className="text-surface-400">No orders yet</p>
+                            <p className="text-surface-400">Hələlik sifariş yoxdur</p>
                         </div>
                     ) : (
                         <>
@@ -130,12 +130,12 @@ const Reports: React.FC = () => {
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b border-surface-700/50 text-surface-400">
-                                            <th className="text-left p-4 font-medium">Date</th>
-                                            <th className="text-center p-4 font-medium">Table</th>
-                                            <th className="text-left p-4 font-medium">Items</th>
-                                            <th className="text-right p-4 font-medium">Total</th>
+                                            <th className="text-left p-4 font-medium">Tarix</th>
+                                            <th className="text-center p-4 font-medium">Masa</th>
+                                            <th className="text-left p-4 font-medium">Məhsullar</th>
+                                            <th className="text-right p-4 font-medium">Məbləğ</th>
                                             <th className="text-center p-4 font-medium">Status</th>
-                                            <th className="text-left p-4 font-medium">Waiter</th>
+                                            <th className="text-left p-4 font-medium">Ofisiant</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -164,7 +164,7 @@ const Reports: React.FC = () => {
                     )
                 ) : logs.length === 0 ? (
                     <div className="card text-center py-12">
-                        <p className="text-surface-400">No inventory usage logs yet</p>
+                        <p className="text-surface-400">Hələlik anbar istifadəsi tarixçəsi yoxdur</p>
                     </div>
                 ) : (
                     <>
@@ -192,12 +192,12 @@ const Reports: React.FC = () => {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-surface-700/50 text-surface-400">
-                                        <th className="text-left p-4 font-medium">Date</th>
-                                        <th className="text-left p-4 font-medium">Item</th>
-                                        <th className="text-center p-4 font-medium">Table</th>
-                                        <th className="text-right p-4 font-medium">Used</th>
-                                        <th className="text-right p-4 font-medium">Before</th>
-                                        <th className="text-right p-4 font-medium">After</th>
+                                        <th className="text-left p-4 font-medium">Tarix</th>
+                                        <th className="text-left p-4 font-medium">Məhsul</th>
+                                        <th className="text-center p-4 font-medium">Masa</th>
+                                        <th className="text-right p-4 font-medium">İstifadə olunan</th>
+                                        <th className="text-right p-4 font-medium">Əvvəl</th>
+                                        <th className="text-right p-4 font-medium">Sonra</th>
                                     </tr>
                                 </thead>
                                 <tbody>

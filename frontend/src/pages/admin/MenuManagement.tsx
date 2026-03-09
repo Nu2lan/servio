@@ -16,9 +16,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
         if (this.state.hasError) {
             return (
                 <div className="card text-center py-12">
-                    <p className="text-red-400 text-lg font-semibold mb-2">Something went wrong</p>
+                    <p className="text-red-400 text-lg font-semibold mb-2">Xəta baş verdi</p>
                     <p className="text-surface-400 text-sm">{this.state.error}</p>
-                    <button onClick={() => window.location.reload()} className="btn-primary mt-4">Reload</button>
+                    <button onClick={() => window.location.reload()} className="btn-primary mt-4">Yenidən yüklə</button>
                 </div>
             );
         }
@@ -51,12 +51,12 @@ interface MenuItem {
 }
 
 const adminNav = [
-    { label: 'Dashboard', path: '/admin' },
-    { label: 'Menu', path: '/admin/menu' },
-    { label: 'Inventory', path: '/admin/inventory' },
-    { label: 'Users', path: '/admin/users' },
-    { label: 'Reports', path: '/admin/reports' },
-    { label: 'Settings', path: '/admin/settings' },
+    { label: 'Əsas səhifə', path: '/admin' },
+    { label: 'Menyu', path: '/admin/menu' },
+    { label: 'Anbar', path: '/admin/inventory' },
+    { label: 'İstifadəçilər', path: '/admin/users' },
+    { label: 'Hesabatlar', path: '/admin/reports' },
+    { label: 'Tənzimləmələr', path: '/admin/settings' },
 ];
 
 const MenuManagement: React.FC = () => {
@@ -88,7 +88,7 @@ const MenuManagement: React.FC = () => {
             setCategories(catNames);
             setForm((prev) => ({ ...prev, category: prev.category || catNames[0] || '' }));
         } catch {
-            toast.error('Failed to load categories');
+            toast.error('Kateqoriyaları yükləmək mümkün olmadı');
         }
     };
 
@@ -97,7 +97,7 @@ const MenuManagement: React.FC = () => {
             const { data } = await api.get('/admin/menu');
             setItems(data);
         } catch {
-            toast.error('Failed to load menu items');
+            toast.error('Menyu elementlərini yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
         }
@@ -108,7 +108,7 @@ const MenuManagement: React.FC = () => {
             const { data } = await api.get('/admin/inventory');
             setInventoryItems(data);
         } catch {
-            toast.error('Failed to load inventory');
+            toast.error('Anbarı yükləmək mümkün olmadı');
         }
     };
 
@@ -137,15 +137,15 @@ const MenuManagement: React.FC = () => {
             if (editingId) {
                 const { data } = await api.put(`/admin/menu/${editingId}`, payload);
                 setItems((prev) => prev.map((i) => (i._id === editingId ? data : i)));
-                toast.success('Menu item updated');
+                toast.success('Menyu elementi yeniləndi');
             } else {
                 const { data } = await api.post('/admin/menu', payload);
                 setItems((prev) => [...prev, data]);
-                toast.success('Menu item added');
+                toast.success('Menyu elementi əlavə edildi');
             }
             resetForm();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Operation failed');
+            toast.error(error.response?.data?.message || 'Əməliyyat uğursuz oldu');
         }
     };
 
@@ -170,13 +170,13 @@ const MenuManagement: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this item?')) return;
+        if (!confirm('Bu obyekti silmək istədiyinizə əminsiniz?')) return;
         try {
             await api.delete(`/admin/menu/${id}`);
             setItems((prev) => prev.filter((i) => i._id !== id));
-            toast.success('Menu item deleted');
+            toast.success('Menyu elementi silindi');
         } catch {
-            toast.error('Failed to delete');
+            toast.error('Silmək mümkün olmadı');
         }
     };
 
@@ -216,11 +216,11 @@ const MenuManagement: React.FC = () => {
                 ...prev,
                 { inventoryItem: data._id, name: data.name, qty: 1 },
             ]);
-            setNewInventory({ name: '', stock: '', unit: 'portions' });
+            setNewInventory({ name: '', stock: '', unit: 'ədəd' });
             setShowNewInventory(false);
-            toast.success('Inventory item created');
+            toast.success('Anbar elementi yaradıldı');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to create inventory item');
+            toast.error(error.response?.data?.message || 'Anbar elementini yaratmaq mümkün olmadı');
         }
     };
 
@@ -238,13 +238,13 @@ const MenuManagement: React.FC = () => {
             <div className="space-y-6">
                 <div className="sticky top-16 z-10 bg-surface-950 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 space-y-3">
                     <div className="flex items-center justify-between gap-3 pt-1">
-                        <h2 className="text-xl font-bold text-surface-100 flex-shrink-0">Menu Management</h2>
+                        <h2 className="text-xl font-bold text-surface-100 flex-shrink-0">Menyu İdarəetməsi</h2>
                         <div className="flex items-center gap-2 flex-1 justify-end">
                             <div className="relative max-w-xs flex-1 hidden sm:block">
                                 <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                                 <input
                                     type="text"
-                                    placeholder="Search by name..."
+                                    placeholder="Ada görə axtarış..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="input w-full pl-9 py-2 text-sm"
@@ -254,7 +254,7 @@ const MenuManagement: React.FC = () => {
                                 onClick={() => { resetForm(); setShowForm(!showForm); }}
                                 className={showForm ? 'btn-secondary flex-shrink-0' : 'btn-primary flex-shrink-0'}
                             >
-                                {showForm ? <><HiOutlineX className="w-4 h-4" /> Cancel</> : <><HiOutlinePlus className="w-4 h-4" /> Add Item</>}
+                                {showForm ? <><HiOutlineX className="w-4 h-4" /> Ləğv et</> : <><HiOutlinePlus className="w-4 h-4" /> Element Əlavə Et</>}
                             </button>
                         </div>
                     </div>
@@ -262,7 +262,7 @@ const MenuManagement: React.FC = () => {
                         <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                         <input
                             type="text"
-                            placeholder="Search by name..."
+                            placeholder="Ada görə axtarış..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="input w-full pl-9 py-2 text-sm"
@@ -277,7 +277,7 @@ const MenuManagement: React.FC = () => {
                                 <div className="flex justify-center mb-3"><div className="w-10 h-1 rounded-full bg-surface-600" /></div>
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-lg font-semibold text-surface-100">
-                                        {editingId ? 'Edit Menu Item' : 'New Menu Item'}
+                                        {editingId ? 'Menyu Elementini Redaktə Et' : 'Yeni Menyu Elementi'}
                                     </h3>
                                     <button onClick={() => { resetForm(); setShowForm(false); }} className="btn-ghost btn-sm">
                                         <HiOutlineX className="w-5 h-5" />
@@ -288,7 +288,7 @@ const MenuManagement: React.FC = () => {
                                 <div className="space-y-4 overflow-y-auto px-6 py-2 flex-1">
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div>
-                                            <label className="label">Name</label>
+                                            <label className="label">Ad</label>
                                             <input
                                                 className="input"
                                                 value={form.name}
@@ -298,7 +298,7 @@ const MenuManagement: React.FC = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label className="label">Category</label>
+                                            <label className="label">Kateqoriya</label>
                                             <select
                                                 className="input"
                                                 value={form.category}
@@ -310,7 +310,7 @@ const MenuManagement: React.FC = () => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="label">Price ($)</label>
+                                            <label className="label">Qiymət (AZN)</label>
                                             <input
                                                 className="input"
                                                 type="number"
@@ -327,14 +327,14 @@ const MenuManagement: React.FC = () => {
                                     {/* Ingredients Picker */}
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
-                                            <label className="label mb-0">Ingredients (Inventory Items)</label>
+                                            <label className="label mb-0">Tərkibi (Anbar Elementləri)</label>
                                             <button
                                                 type="button"
                                                 onClick={() => setShowNewInventory(!showNewInventory)}
                                                 className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1"
                                             >
                                                 <HiOutlinePlus className="w-3 h-3" />
-                                                Add New Inventory Item
+                                                Yeni Anbar Elementi Əlavə Et
                                             </button>
                                         </div>
 
@@ -344,14 +344,14 @@ const MenuManagement: React.FC = () => {
                                                 <div className="grid grid-cols-3 gap-2">
                                                     <input
                                                         className="input text-sm"
-                                                        placeholder="Item name"
+                                                        placeholder="Element adı"
                                                         value={newInventory.name}
                                                         onChange={(e) => setNewInventory({ ...newInventory, name: e.target.value })}
                                                     />
                                                     <input
                                                         className="input text-sm"
                                                         type="number"
-                                                        placeholder="Initial stock"
+                                                        placeholder="İlkin ehtiyat"
                                                         min="0"
                                                         value={newInventory.stock}
                                                         onChange={(e) => setNewInventory({ ...newInventory, stock: e.target.value })}
@@ -371,7 +371,7 @@ const MenuManagement: React.FC = () => {
                                                             onClick={handleAddNewInventory}
                                                             className="btn-primary text-xs px-3"
                                                         >
-                                                            Add
+                                                            Əlavə et
                                                         </button>
                                                     </div>
                                                 </div>
@@ -383,7 +383,7 @@ const MenuManagement: React.FC = () => {
                                             <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                                             <input
                                                 className="input pl-9 text-sm"
-                                                placeholder="Search inventory items..."
+                                                placeholder="Anbar elementlərini axtar..."
                                                 value={ingredientSearch}
                                                 onChange={(e) => setIngredientSearch(e.target.value)}
                                             />
@@ -393,7 +393,7 @@ const MenuManagement: React.FC = () => {
                                         <div className="bg-surface-800/30 rounded-xl border border-surface-700/50 max-h-48 overflow-y-auto">
                                             {filteredInventory.length === 0 ? (
                                                 <p className="text-surface-500 text-sm text-center py-4">
-                                                    No inventory items found. Create one above.
+                                                    Anbar elementi tapılmadı. Yuxarıdan yaradın.
                                                 </p>
                                             ) : (
                                                 filteredInventory.map((inv) => {
@@ -428,7 +428,7 @@ const MenuManagement: React.FC = () => {
                                                             </div>
                                                             {selected && (
                                                                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                                                    <label className="text-xs text-surface-400">Qty:</label>
+                                                                    <label className="text-xs text-surface-400">Say:</label>
                                                                     <input
                                                                         className="input w-20 text-sm text-right"
                                                                         type="number"
@@ -469,10 +469,10 @@ const MenuManagement: React.FC = () => {
                                 </div>
                                 <div className="sticky bottom-0 bg-surface-800 px-6 py-4 border-t border-surface-700/50 flex items-center gap-2">
                                     <button type="submit" className="btn-primary flex-1">
-                                        {editingId ? 'Update Item' : 'Add Item'}
+                                        {editingId ? 'Elementi Yenilə' : 'Element Əlavə Et'}
                                     </button>
                                     <button type="button" onClick={() => { resetForm(); setShowForm(false); }} className="btn-secondary flex-1">
-                                        Cancel
+                                        Ləğv et
                                     </button>
                                 </div>
                             </form>
@@ -484,16 +484,16 @@ const MenuManagement: React.FC = () => {
                 {showForm && (
                     <div className="hidden md:block card animate-slide-up">
                         <h3 className="text-lg font-semibold text-surface-100 mb-4">
-                            {editingId ? 'Edit Menu Item' : 'New Menu Item'}
+                            {editingId ? 'Menyu Elementini Redaktə Et' : 'Yeni Menyu Elementi'}
                         </h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="label">Name</label>
+                                    <label className="label">Ad</label>
                                     <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Grilled Chicken" />
                                 </div>
                                 <div>
-                                    <label className="label">Category</label>
+                                    <label className="label">Kateqoriya</label>
                                     <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                                         {[...categories].sort((a, b) => a.localeCompare(b)).map((cat) => (
                                             <option key={cat} value={cat}>{cat.toUpperCase()}</option>
@@ -501,41 +501,41 @@ const MenuManagement: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="label">Price ($)</label>
+                                    <label className="label">Qiymət (AZN)</label>
                                     <input className="input" type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required placeholder="12.99" />
                                 </div>
                             </div>
                             {/* Ingredients Picker */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
-                                    <label className="label mb-0">Ingredients (Inventory Items)</label>
+                                    <label className="label mb-0">Tərkibi (Anbar Elementləri)</label>
                                     <button type="button" onClick={() => setShowNewInventory(!showNewInventory)} className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
-                                        <HiOutlinePlus className="w-3 h-3" /> Add New Inventory Item
+                                        <HiOutlinePlus className="w-3 h-3" /> Yeni Anbar Elementi Əlavə Et
                                     </button>
                                 </div>
                                 {showNewInventory && (
                                     <div className="bg-surface-800/50 rounded-xl p-3 mb-3 border border-surface-700/50">
                                         <div className="grid grid-cols-3 gap-2">
-                                            <input className="input text-sm" placeholder="Item name" value={newInventory.name} onChange={(e) => setNewInventory({ ...newInventory, name: e.target.value })} />
-                                            <input className="input text-sm" type="number" placeholder="Initial stock" min="0" value={newInventory.stock} onChange={(e) => setNewInventory({ ...newInventory, stock: e.target.value })} />
+                                            <input className="input text-sm" placeholder="Element adı" value={newInventory.name} onChange={(e) => setNewInventory({ ...newInventory, name: e.target.value })} />
+                                            <input className="input text-sm" type="number" placeholder="İlkin ehtiyat" min="0" value={newInventory.stock} onChange={(e) => setNewInventory({ ...newInventory, stock: e.target.value })} />
                                             <div className="flex gap-2">
                                                 <select className="input text-sm flex-1" value={newInventory.unit} onChange={(e) => setNewInventory({ ...newInventory, unit: e.target.value })}>
                                                     <option value="ədəd">ədəd</option>
                                                     <option value="kq">kq</option>
                                                     <option value="litr">litr</option>
                                                 </select>
-                                                <button type="button" onClick={handleAddNewInventory} className="btn-primary text-xs px-3">Add</button>
+                                                <button type="button" onClick={handleAddNewInventory} className="btn-primary text-xs px-3">Əlavə et</button>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                                 <div className="relative mb-2">
                                     <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                                    <input className="input pl-9 text-sm" placeholder="Search inventory items..." value={ingredientSearch} onChange={(e) => setIngredientSearch(e.target.value)} />
+                                    <input className="input pl-9 text-sm" placeholder="Anbar elementlərini axtar..." value={ingredientSearch} onChange={(e) => setIngredientSearch(e.target.value)} />
                                 </div>
                                 <div className="bg-surface-800/30 rounded-xl border border-surface-700/50 max-h-48 overflow-y-auto">
                                     {filteredInventory.length === 0 ? (
-                                        <p className="text-surface-500 text-sm text-center py-4">No inventory items found. Create one above.</p>
+                                        <p className="text-surface-500 text-sm text-center py-4">Anbar elementi tapılmadı. Yuxarıdan yaradın.</p>
                                     ) : (
                                         filteredInventory.map((inv) => {
                                             const selected = isSelected(inv._id);
@@ -553,7 +553,7 @@ const MenuManagement: React.FC = () => {
                                                     </div>
                                                     {selected && (
                                                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                                            <label className="text-xs text-surface-400">Qty:</label>
+                                                            <label className="text-xs text-surface-400">Say:</label>
                                                             <input className="input w-20 text-sm text-right" type="number" value={ingredient?.qty ?? ''} onChange={(e) => updateIngredientQty(inv._id, e.target.value === '' ? 0 : parseFloat(e.target.value))} onFocus={(e) => e.target.select()} />
                                                         </div>
                                                     )}
@@ -575,10 +575,10 @@ const MenuManagement: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-2">
                                 <button type="submit" className="btn-primary flex-1">
-                                    {editingId ? 'Update Item' : 'Add Item'}
+                                    {editingId ? 'Elementi Yenilə' : 'Element Əlavə Et'}
                                 </button>
                                 <button type="button" onClick={() => { resetForm(); setShowForm(false); }} className="btn-secondary flex-1">
-                                    Cancel
+                                    Ləğv et
                                 </button>
                             </div>
                         </form>
@@ -592,7 +592,7 @@ const MenuManagement: React.FC = () => {
                     </div>
                 ) : items.filter(i => i.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
                     <div className="card text-center py-12">
-                        <p className="text-surface-400">{searchQuery ? 'No items match your search.' : 'No menu items yet. Add your first item above.'}</p>
+                        <p className="text-surface-400">{searchQuery ? 'Axtarışınıza uyğun element tapılmadı.' : 'Hələ heç bir menyu elementi yoxdur. İlk elementinizi yuxarıdan əlavə edin.'}</p>
                     </div>
                 ) : (
                     <>
@@ -608,7 +608,7 @@ const MenuManagement: React.FC = () => {
                                         <div className="flex items-center gap-2">
                                             <span className="text-lg font-bold text-surface-100">{(item.price ?? 0).toFixed(2)} AZN</span>
                                             <span className={item.isActive ? 'badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'badge bg-red-500/20 text-red-400 border border-red-500/30'}>
-                                                {item.isActive ? 'Active' : 'Inactive'}
+                                                {item.isActive ? 'Aktiv' : 'Deaktiv'}
                                             </span>
                                         </div>
                                     </div>
@@ -626,10 +626,10 @@ const MenuManagement: React.FC = () => {
                                     )}
                                     <div className="flex items-center gap-2 pt-1 border-t border-surface-700/30">
                                         <button onClick={() => handleEdit(item)} className="btn-ghost btn-sm flex-1">
-                                            <HiOutlinePencil className="w-4 h-4" /> Edit
+                                            <HiOutlinePencil className="w-4 h-4" /> Redaktə et
                                         </button>
                                         <button onClick={() => handleDelete(item._id)} className="btn-ghost btn-sm flex-1 text-red-400 hover:text-red-300">
-                                            <HiOutlineTrash className="w-4 h-4" /> Delete
+                                            <HiOutlineTrash className="w-4 h-4" /> Sil
                                         </button>
                                     </div>
                                 </div>
@@ -641,12 +641,12 @@ const MenuManagement: React.FC = () => {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-surface-700/50 text-surface-400">
-                                        <th className="text-left p-4 font-medium">Name</th>
-                                        <th className="text-left p-4 font-medium">Category</th>
-                                        <th className="text-right p-4 font-medium">Price</th>
-                                        <th className="text-left p-4 font-medium">Ingredients</th>
+                                        <th className="text-left p-4 font-medium">Ad</th>
+                                        <th className="text-left p-4 font-medium">Kateqoriya</th>
+                                        <th className="text-right p-4 font-medium">Qiymət</th>
+                                        <th className="text-left p-4 font-medium">Tərkibi</th>
                                         <th className="text-center p-4 font-medium">Status</th>
-                                        <th className="text-right p-4 font-medium">Actions</th>
+                                        <th className="text-right p-4 font-medium">Əməliyyatlar</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -672,7 +672,7 @@ const MenuManagement: React.FC = () => {
                                             </td>
                                             <td className="p-4 text-center">
                                                 <span className={item.isActive ? 'badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'badge bg-red-500/20 text-red-400 border border-red-500/30'}>
-                                                    {item.isActive ? 'Active' : 'Inactive'}
+                                                    {item.isActive ? 'Aktiv' : 'Deaktiv'}
                                                 </span>
                                             </td>
                                             <td className="p-4 text-right">

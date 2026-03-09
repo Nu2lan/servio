@@ -58,7 +58,7 @@ const WaiterOrders: React.FC = () => {
                 setActiveTab(hallsData[0].name);
             }
         } catch {
-            toast.error('Failed to load orders');
+            toast.error('Sifarişləri yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
         }
@@ -167,19 +167,19 @@ const WaiterOrders: React.FC = () => {
 
     return (
         <Layout
-            title="Waiter Panel"
+            title="Ofisiant Paneli"
             navItems={[
-                { label: 'New Order', path: '/waiter' },
-                { label: 'My Orders', path: '/waiter/orders' },
+                { label: 'Yeni Sifariş', path: '/waiter' },
+                { label: 'Sifarişlərim', path: '/waiter/orders' },
             ]}
         >
             <div className="space-y-4">
                 {/* Sticky header */}
                 <div className="sticky top-16 z-30 bg-surface-950 pb-3 pt-1 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 space-y-3">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-surface-100">My Orders</h2>
+                        <h2 className="text-xl font-bold text-surface-100">Sifarişlərim</h2>
                         <button onClick={fetchData} className="btn-secondary btn-sm">
-                            Refresh
+                            Yenilə
                         </button>
                     </div>
 
@@ -220,7 +220,7 @@ const WaiterOrders: React.FC = () => {
                     </div>
                 ) : groupedOrders.length === 0 ? (
                     <div className="card text-center py-12">
-                        <p className="text-surface-400">No orders for {activeTab}</p>
+                        <p className="text-surface-400">{activeTab} üçün sifariş yoxdur</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -237,14 +237,14 @@ const WaiterOrders: React.FC = () => {
                                                 <span className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-brand-500/30">
                                                     {getDisplayTableNumber(group.tableNumber)}
                                                 </span>
-                                                <span className="text-xs text-surface-500">Table</span>
+                                                <span className="text-xs text-surface-500">Masa</span>
                                             </>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {group.orderCount > 1 && (
                                             <span className="text-xs text-surface-500 bg-surface-800 px-2 py-0.5 rounded-md">
-                                                {group.orderCount} orders
+                                                {group.orderCount} sifariş
                                             </span>
                                         )}
                                         <span className={group.status === 'paid' ? 'badge-paid' : 'badge-confirmed'}>

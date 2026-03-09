@@ -20,7 +20,7 @@ router.get('/users', async (_req: AuthRequest, res: Response): Promise<void> => 
         const users = await User.find().select('-password').sort({ createdAt: -1 });
         res.json(users);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -30,30 +30,30 @@ router.post('/users', async (req: AuthRequest, res: Response): Promise<void> => 
         const { username, password, role, pin } = req.body;
 
         if (!username || !role) {
-            res.status(400).json({ message: 'Username and role are required.' });
+            res.status(400).json({ message: 'İstifadəçi adı və rol tələb olunur.' });
             return;
         }
 
         if (role === 'admin' && !password) {
-            res.status(400).json({ message: 'Password is required for admin users.' });
+            res.status(400).json({ message: 'Admin istifadəçiləri üçün şifrə tələb olunur.' });
             return;
         }
 
         const existingUser = await User.findOne({ username });
         if (existingUser) {
-            res.status(409).json({ message: 'Username already exists.' });
+            res.status(409).json({ message: 'İstifadəçi adı artıq mövcuddur.' });
             return;
         }
 
         // Validate PIN if provided
         if (pin) {
             if (!/^\d{4}$/.test(pin)) {
-                res.status(400).json({ message: 'PIN must be exactly 4 digits.' });
+                res.status(400).json({ message: 'PİN düz 4 rəqəmdən ibarət olmalıdır.' });
                 return;
             }
             const existingPin = await User.findOne({ pin });
             if (existingPin) {
-                res.status(409).json({ message: `PIN is already assigned to ${existingPin.username}.` });
+                res.status(409).json({ message: `PİN artıq ${existingPin.username} istifadəçisinə təyin edilib.` });
                 return;
             }
         }
@@ -72,7 +72,7 @@ router.post('/users', async (req: AuthRequest, res: Response): Promise<void> => 
             createdAt: user.createdAt,
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -83,12 +83,12 @@ router.put('/users/:id', async (req: AuthRequest, res: Response): Promise<void> 
         const user = await User.findById(req.params.id);
 
         if (!user) {
-            res.status(404).json({ message: 'User not found.' });
+            res.status(404).json({ message: 'İstifadəçi tapılmadı.' });
             return;
         }
 
         if (typeof isActive === 'boolean' && !isActive && req.params.id === req.user?.id) {
-            res.status(400).json({ message: 'You cannot deactivate your own account.' });
+            res.status(400).json({ message: 'Siz öz hesabınızı deaktiv edə bilməzsiniz.' });
             return;
         }
 
@@ -99,13 +99,13 @@ router.put('/users/:id', async (req: AuthRequest, res: Response): Promise<void> 
                 user.pin = undefined;
             } else {
                 if (!/^\d{4}$/.test(pin)) {
-                    res.status(400).json({ message: 'PIN must be exactly 4 digits.' });
+                    res.status(400).json({ message: 'PİN düz 4 rəqəmdən ibarət olmalıdır.' });
                     return;
                 }
                 // Check uniqueness
                 const existingPin = await User.findOne({ pin, _id: { $ne: req.params.id } });
                 if (existingPin) {
-                    res.status(409).json({ message: `PIN is already assigned to ${existingPin.username}.` });
+                    res.status(409).json({ message: `PİN artıq ${existingPin.username} istifadəçisinə təyin edilib.` });
                     return;
                 }
                 user.pin = pin;
@@ -128,7 +128,7 @@ router.put('/users/:id', async (req: AuthRequest, res: Response): Promise<void> 
             createdAt: user.createdAt,
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -137,7 +137,7 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response): Promise<voi
     try {
         const user = await User.findById(req.params.id);
         if (!user) {
-            res.status(404).json({ message: 'User not found.' });
+            res.status(404).json({ message: 'İstifadəçi tapılmadı.' });
             return;
         }
 
@@ -145,15 +145,15 @@ router.delete('/users/:id', async (req: AuthRequest, res: Response): Promise<voi
         if (user.role === 'admin') {
             const adminCount = await User.countDocuments({ role: 'admin' });
             if (adminCount <= 1) {
-                res.status(400).json({ message: 'Cannot delete the last admin user.' });
+                res.status(400).json({ message: 'Sonuncu admin istifadəçisini silə bilməzsiniz.' });
                 return;
             }
         }
 
         await User.findByIdAndDelete(req.params.id);
-        res.json({ message: 'User deleted successfully.' });
+        res.json({ message: 'İstifadəçi uğurla silindi.' });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -167,7 +167,7 @@ router.get('/menu', async (_req: AuthRequest, res: Response): Promise<void> => {
             .sort({ category: 1, name: 1 });
         res.json(items);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -177,7 +177,7 @@ router.post('/menu', async (req: AuthRequest, res: Response): Promise<void> => {
         const { name, price, category, ingredients } = req.body;
 
         if (!name || price === undefined) {
-            res.status(400).json({ message: 'Name and price are required.' });
+            res.status(400).json({ message: 'Ad və qiymət tələb olunur.' });
             return;
         }
 
@@ -189,7 +189,7 @@ router.post('/menu', async (req: AuthRequest, res: Response): Promise<void> => {
 
         res.status(201).json(populated);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -217,7 +217,7 @@ router.put('/menu/:id', async (req: AuthRequest, res: Response): Promise<void> =
 
         res.json(item);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -230,9 +230,9 @@ router.delete('/menu/:id', async (req: AuthRequest, res: Response): Promise<void
             return;
         }
 
-        res.json({ message: 'Menu item deleted successfully.' });
+        res.json({ message: 'Menyu məhsulu uğurla silindi.' });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -244,7 +244,7 @@ router.get('/inventory', async (_req: AuthRequest, res: Response): Promise<void>
         const inventory = await Inventory.find().sort({ name: 1 });
         res.json(inventory);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -254,7 +254,7 @@ router.post('/inventory', async (req: AuthRequest, res: Response): Promise<void>
         const { name, stock, unit } = req.body;
 
         if (!name || !name.trim()) {
-            res.status(400).json({ message: 'Inventory item name is required.' });
+            res.status(400).json({ message: 'Ehtiyat məhsulunun adı tələb olunur.' });
             return;
         }
 
@@ -267,7 +267,7 @@ router.post('/inventory', async (req: AuthRequest, res: Response): Promise<void>
         res.status(201).json(item);
     } catch (error) {
         console.error('POST /inventory error:', error);
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -287,13 +287,13 @@ router.put('/inventory/:id', async (req: AuthRequest, res: Response): Promise<vo
         );
 
         if (!inventory) {
-            res.status(404).json({ message: 'Inventory item not found.' });
+            res.status(404).json({ message: 'Ehtiyat məhsulu tapılmadı.' });
             return;
         }
 
         res.json(inventory);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -302,7 +302,7 @@ router.delete('/inventory/:id', async (req: AuthRequest, res: Response): Promise
     try {
         const item = await Inventory.findByIdAndDelete(req.params.id);
         if (!item) {
-            res.status(404).json({ message: 'Inventory item not found.' });
+            res.status(404).json({ message: 'Ehtiyat məhsulu tapılmadı.' });
             return;
         }
 
@@ -312,9 +312,9 @@ router.delete('/inventory/:id', async (req: AuthRequest, res: Response): Promise
             { $pull: { ingredients: { inventoryItem: req.params.id } } }
         );
 
-        res.json({ message: 'Inventory item deleted successfully.' });
+        res.json({ message: 'Ehtiyat məhsulu uğurla silindi.' });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -339,7 +339,7 @@ router.get('/reports/orders', async (req: AuthRequest, res: Response): Promise<v
 
         res.json(orders);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -361,7 +361,7 @@ router.get('/reports/inventory', async (req: AuthRequest, res: Response): Promis
 
         res.json(logs);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -376,7 +376,7 @@ router.get('/settings', async (_req: AuthRequest, res: Response): Promise<void> 
         }
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -396,7 +396,7 @@ router.put('/settings', async (req: AuthRequest, res: Response): Promise<void> =
         await settings.save();
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -405,20 +405,20 @@ router.post('/settings/categories', async (req: AuthRequest, res: Response): Pro
     try {
         const { name, role } = req.body;
         if (!name || !name.trim()) {
-            res.status(400).json({ message: 'Category name is required.' });
+            res.status(400).json({ message: 'Kateqoriya adı tələb olunur.' });
             return;
         }
         let settings = await Settings.findOne();
         if (!settings) settings = new Settings({});
         if (settings.categories.some((c: any) => c.name === name.trim())) {
-            res.status(409).json({ message: 'Category already exists.' });
+            res.status(409).json({ message: 'Kateqoriya artıq mövcuddur.' });
             return;
         }
         settings.categories.push({ name: name.trim(), role: role || 'kitchen' });
         await settings.save();
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -427,7 +427,7 @@ router.put('/settings/categories', async (req: AuthRequest, res: Response): Prom
     try {
         const { oldName, newName, role } = req.body;
         if (!oldName || !newName || !newName.trim()) {
-            res.status(400).json({ message: 'Old name and new name are required.' });
+            res.status(400).json({ message: 'Köhnə və yeni ad tələb olunur.' });
             return;
         }
         let settings = await Settings.findOne();
@@ -437,7 +437,7 @@ router.put('/settings/categories', async (req: AuthRequest, res: Response): Prom
         }
         const idx = settings.categories.findIndex((c: any) => c.name === oldName);
         if (idx === -1) {
-            res.status(404).json({ message: 'Category not found.' });
+            res.status(404).json({ message: 'Kateqoriya tapılmadı.' });
             return;
         }
         settings.categories[idx] = { name: newName.trim(), role: role || settings.categories[idx].role };
@@ -454,7 +454,7 @@ router.put('/settings/categories', async (req: AuthRequest, res: Response): Prom
 
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -463,7 +463,7 @@ router.delete('/settings/categories', async (req: AuthRequest, res: Response): P
     try {
         const { name } = req.body;
         if (!name) {
-            res.status(400).json({ message: 'Category name is required.' });
+            res.status(400).json({ message: 'Kateqoriya adı tələb olunur.' });
             return;
         }
         let settings = await Settings.findOne();
@@ -475,7 +475,7 @@ router.delete('/settings/categories', async (req: AuthRequest, res: Response): P
         await settings.save();
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -484,13 +484,13 @@ router.post('/settings/halls', async (req: AuthRequest, res: Response): Promise<
     try {
         const { name, tables, type } = req.body;
         if (!name || !name.trim()) {
-            res.status(400).json({ message: 'Hall name is required.' });
+            res.status(400).json({ message: 'Zal adı tələb olunur.' });
             return;
         }
         let settings = await Settings.findOne();
         if (!settings) settings = new Settings({});
         if (settings.halls.some((h: any) => h.name === name.trim())) {
-            res.status(409).json({ message: 'Hall already exists.' });
+            res.status(409).json({ message: 'Zal artıq mövcuddur.' });
             return;
         }
         settings.halls.push({ name: name.trim(), tables: tables || [], type: type || 'hall' });
@@ -498,7 +498,7 @@ router.post('/settings/halls', async (req: AuthRequest, res: Response): Promise<
         await settings.save();
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -507,7 +507,7 @@ router.put('/settings/halls', async (req: AuthRequest, res: Response): Promise<v
     try {
         const { oldName, newName, tables, type } = req.body;
         if (!oldName) {
-            res.status(400).json({ message: 'Old name is required.' });
+            res.status(400).json({ message: 'Köhnə ad tələb olunur.' });
             return;
         }
         let settings = await Settings.findOne();
@@ -517,7 +517,7 @@ router.put('/settings/halls', async (req: AuthRequest, res: Response): Promise<v
         }
         const idx = settings.halls.findIndex((h: any) => h.name === oldName);
         if (idx === -1) {
-            res.status(404).json({ message: 'Hall not found.' });
+            res.status(404).json({ message: 'Zal tapılmadı.' });
             return;
         }
         if (newName && newName.trim()) settings.halls[idx].name = newName.trim();
@@ -527,7 +527,7 @@ router.put('/settings/halls', async (req: AuthRequest, res: Response): Promise<v
         await settings.save();
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -536,7 +536,7 @@ router.delete('/settings/halls', async (req: AuthRequest, res: Response): Promis
     try {
         const { name } = req.body;
         if (!name) {
-            res.status(400).json({ message: 'Hall name is required.' });
+            res.status(400).json({ message: 'Zal adı tələb olunur.' });
             return;
         }
         let settings = await Settings.findOne();
@@ -549,7 +549,7 @@ router.delete('/settings/halls', async (req: AuthRequest, res: Response): Promis
         await settings.save();
         res.json(settings);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 

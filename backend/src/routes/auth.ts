@@ -11,19 +11,19 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
         const { username, password } = req.body;
 
         if (!username || !password) {
-            res.status(400).json({ message: 'Username and password are required.' });
+            res.status(400).json({ message: 'İstifadəçi adı və şifrə tələb olunur.' });
             return;
         }
 
         const user = await User.findOne({ username, isActive: true });
         if (!user) {
-            res.status(401).json({ message: 'Invalid credentials.' });
+            res.status(401).json({ message: 'Yanlış məlumatlar.' });
             return;
         }
 
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
-            res.status(401).json({ message: 'Invalid credentials.' });
+            res.status(401).json({ message: 'Yanlış məlumatlar.' });
             return;
         }
 
@@ -42,7 +42,7 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
             },
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -52,13 +52,13 @@ router.post('/pin-login', async (req: AuthRequest, res: Response): Promise<void>
         const { pin } = req.body;
 
         if (!pin || !/^\d{4}$/.test(pin)) {
-            res.status(400).json({ message: 'A valid 4-digit PIN is required.' });
+            res.status(400).json({ message: 'Düzgün 4 rəqəmli PİN tələb olunur.' });
             return;
         }
 
         const user = await User.findOne({ pin, isActive: true });
         if (!user) {
-            res.status(401).json({ message: 'Invalid PIN.' });
+            res.status(401).json({ message: 'Yanlış PİN.' });
             return;
         }
 
@@ -77,7 +77,29 @@ router.post('/pin-login', async (req: AuthRequest, res: Response): Promise<void>
             },
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
+    }
+});
+
+// POST /api/auth/verify-pin - verify pin for specific actions without logging in
+router.post('/verify-pin', async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { pin } = req.body;
+
+        if (!pin || !/^\d{4}$/.test(pin)) {
+            res.status(400).json({ message: 'Düzgün 4 rəqəmli PİN tələb olunur.' });
+            return;
+        }
+
+        const user = await User.findOne({ pin, isActive: true });
+        if (!user || (user.role !== 'admin' && user.role !== 'cashier')) {
+            res.status(401).json({ message: 'Yanlış PİN və ya kifayət etməyən icazələr.' });
+            return;
+        }
+
+        res.json({ success: true, role: user.role });
+    } catch (error) {
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -85,7 +107,7 @@ router.post('/pin-login', async (req: AuthRequest, res: Response): Promise<void>
 router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         if (!req.user) {
-            res.status(401).json({ message: 'Not authenticated.' });
+            res.status(401).json({ message: 'Sistemə daxil olunmayıb.' });
             return;
         }
         res.json({
@@ -94,7 +116,7 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
             role: req.user.role,
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
