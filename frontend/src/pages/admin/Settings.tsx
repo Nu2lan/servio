@@ -16,12 +16,12 @@ interface Hall {
 }
 
 const adminNav = [
-    { label: 'Dashboard', path: '/admin' },
-    { label: 'Menu', path: '/admin/menu' },
-    { label: 'Inventory', path: '/admin/inventory' },
-    { label: 'Users', path: '/admin/users' },
-    { label: 'Reports', path: '/admin/reports' },
-    { label: 'Settings', path: '/admin/settings' },
+    { label: 'Əsas səhifə', path: '/admin' },
+    { label: 'Menyu', path: '/admin/menu' },
+    { label: 'Anbar', path: '/admin/inventory' },
+    { label: 'İstifadəçilər', path: '/admin/users' },
+    { label: 'Hesabatlar', path: '/admin/reports' },
+    { label: 'Tənzimləmələr', path: '/admin/settings' },
 ];
 
 const Settings: React.FC = () => {
@@ -56,7 +56,7 @@ const Settings: React.FC = () => {
             setCategories(cats);
             setHalls(data.halls || []);
         } catch {
-            toast.error('Failed to load settings');
+            toast.error('Tənzimləmələri yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
         }
@@ -110,9 +110,9 @@ const Settings: React.FC = () => {
             setCategories(cats);
             setNewCategory('');
             setNewCategoryRole('kitchen');
-            toast.success('Category added');
+            toast.success('Kateqoriya əlavə edildi');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to add category');
+            toast.error(error.response?.data?.message || 'Kateqoriya əlavə etmək mümkün olmadı');
         }
     };
 
@@ -130,23 +130,23 @@ const Settings: React.FC = () => {
             setCategories(cats);
             setEditingIndex(null);
             setEditValue('');
-            toast.success('Category updated');
+            toast.success('Kateqoriya yeniləndi');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to update category');
+            toast.error(error.response?.data?.message || 'Kateqoriyanı yeniləmək mümkün olmadı');
         }
     };
 
     const handleDeleteCategory = async (name: string) => {
-        if (!confirm(`Delete category "${name}"?`)) return;
+        if (!confirm(`"${name}" kateqoriyasını silməyə əminsiniz?`)) return;
         try {
             const { data } = await api.delete('/admin/settings/categories', { data: { name } });
             const cats = (data.categories || []).map((c: any) =>
                 typeof c === 'string' ? { name: c, role: 'kitchen' } : c
             );
             setCategories(cats);
-            toast.success('Category deleted');
+            toast.success('Kateqoriya silindi');
         } catch {
-            toast.error('Failed to delete category');
+            toast.error('Kateqoriyanı silmək mümkün olmadı');
         }
     };
 
@@ -161,9 +161,9 @@ const Settings: React.FC = () => {
                 typeof c === 'string' ? { name: c, role: 'kitchen' } : c
             );
             setCategories(cats);
-            toast.success(`${cat.name} → ${newRole}`);
+            toast.success(`${cat.name} → ${newRole === 'kitchen' ? 'mətbəx' : 'bar'}`);
         } catch {
-            toast.error('Failed to update role');
+            toast.error('Rolu yeniləmək mümkün olmadı');
         }
     };
 
@@ -183,9 +183,9 @@ const Settings: React.FC = () => {
             setNewHallName('');
             setNewHallTables('');
             setNewHallType('hall');
-            toast.success(newHallType === 'cabinet' ? 'Cabinet added' : 'Hall added');
+            toast.success(newHallType === 'cabinet' ? 'Kabinet əlavə edildi' : 'Zal əlavə edildi');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to add hall');
+            toast.error(error.response?.data?.message || 'Zal əlavə etmək mümkün olmadı');
         }
     };
 
@@ -206,26 +206,26 @@ const Settings: React.FC = () => {
             setEditHallName('');
             setEditHallTables('');
             setEditHallType('hall');
-            toast.success('Updated');
+            toast.success('Yeniləndi');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to update hall');
+            toast.error(error.response?.data?.message || 'Zalı yeniləmək mümkün olmadı');
         }
     };
 
     const handleDeleteHall = async (name: string) => {
-        if (!confirm(`Delete hall "${name}"?`)) return;
+        if (!confirm(`"${name}" zalını silməyə əminsiniz?`)) return;
         try {
             const { data } = await api.delete('/admin/settings/halls', { data: { name } });
             setHalls(data.halls || []);
-            toast.success('Hall deleted');
+            toast.success('Zal silindi');
         } catch {
-            toast.error('Failed to delete hall');
+            toast.error('Zalı silmək mümkün olmadı');
         }
     };
 
     if (loading) {
         return (
-            <Layout title="Admin Panel" navItems={adminNav}>
+            <Layout title="Admin Paneli" navItems={adminNav}>
                 <div className="flex items-center justify-center py-20">
                     <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                 </div>
@@ -234,16 +234,16 @@ const Settings: React.FC = () => {
     }
 
     return (
-        <Layout title="Admin Panel" navItems={adminNav}>
+        <Layout title="Admin Paneli" navItems={adminNav}>
             <div className="space-y-8">
-                <h2 className="text-xl font-bold text-surface-100">Settings</h2>
+                <h2 className="text-xl font-bold text-surface-100">Tənzimləmələr</h2>
 
 
                 {/* ─── Halls Management ─── */}
                 <div className="card space-y-4">
-                    <h3 className="text-lg font-semibold text-surface-100">Halls & Tables</h3>
+                    <h3 className="text-lg font-semibold text-surface-100">Zallar və Masalar</h3>
                     <p className="text-sm text-surface-400">
-                        Create halls and assign table numbers to each. Use ranges like <strong>1-10</strong> or lists like <strong>1, 3, 5-8</strong>.
+                        Zallar yaradın və hər birinə masa nömrələri təyin edin. <strong>1-10</strong> kimi aralıqlar və ya <strong>1, 3, 5-8</strong> kimi siyahılar istifadə edin.
                     </p>
 
                     {/* Add new hall/cabinet */}
@@ -255,13 +255,13 @@ const Settings: React.FC = () => {
                                 : 'bg-brand-500/15 text-brand-400 border-brand-500/30'
                                 }`}
                         >
-                            {newHallType === 'cabinet' ? '🚪 Cabinet' : '🏠 Hall'}
+                            {newHallType === 'cabinet' ? '🚪 Kabinet' : '🏠 Zal'}
                         </button>
                         <input
                             className="input flex-1"
                             value={newHallName}
                             onChange={(e) => setNewHallName(e.target.value)}
-                            placeholder={newHallType === 'cabinet' ? 'Cabinet name...' : 'Hall name...'}
+                            placeholder={newHallType === 'cabinet' ? 'Kabinet adı...' : 'Zal adı...'}
                             onKeyDown={(e) => e.key === 'Enter' && handleAddHall()}
                         />
                         {newHallType === 'hall' && (
@@ -269,13 +269,13 @@ const Settings: React.FC = () => {
                                 className="input w-full sm:w-48"
                                 value={newHallTables}
                                 onChange={(e) => setNewHallTables(e.target.value)}
-                                placeholder="Tables: 1-10"
+                                placeholder="Masalar: 1-10"
                                 onKeyDown={(e) => e.key === 'Enter' && handleAddHall()}
                             />
                         )}
                         <button onClick={handleAddHall} className="btn-primary">
                             <HiOutlinePlus className="w-4 h-4" />
-                            Add
+                            Əlavə et
                         </button>
                     </div>
 
@@ -303,7 +303,7 @@ const Settings: React.FC = () => {
                                             onChange={(e) => setEditHallName(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleEditHall(hall.name)}
                                             autoFocus
-                                            placeholder={editHallType === 'cabinet' ? 'Cabinet name' : 'Hall name'}
+                                            placeholder={editHallType === 'cabinet' ? 'Kabinet adı' : 'Zal adı'}
                                         />
                                         {editHallType === 'hall' && (
                                             <input
@@ -311,7 +311,7 @@ const Settings: React.FC = () => {
                                                 value={editHallTables}
                                                 onChange={(e) => setEditHallTables(e.target.value)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleEditHall(hall.name)}
-                                                placeholder="Tables: 1-10"
+                                                placeholder="Masalar: 1-10"
                                             />
                                         )}
                                         <button
@@ -336,14 +336,14 @@ const Settings: React.FC = () => {
                                                     ? 'bg-purple-500/15 text-purple-400 border-purple-500/30'
                                                     : 'bg-brand-500/15 text-brand-400 border-brand-500/30'
                                                     }`}>
-                                                    {hall.type === 'cabinet' ? '🚪 Cabinet' : '🏠 Hall'}
+                                                    {hall.type === 'cabinet' ? '🚪 Kabinet' : '🏠 Zal'}
                                                 </span>
                                             </div>
                                             <p className="text-xs text-surface-500 mt-0.5">
                                                 {hall.type === 'cabinet'
-                                                    ? 'Uses cabinet name as table'
-                                                    : <>Tables: {hall.tables.length > 0 ? formatTableRange(hall.tables) : 'None'}
-                                                        <span className="text-surface-600 ml-2">({hall.tables.length} tables)</span></>}
+                                                    ? 'Kabinetin adını masa kimi istifadə edir'
+                                                    : <>Masalar: {hall.tables.length > 0 ? formatTableRange(hall.tables) : 'Yoxdur'}
+                                                        <span className="text-surface-600 ml-2">({hall.tables.length} masa)</span></>}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -370,16 +370,16 @@ const Settings: React.FC = () => {
                             </div>
                         ))}
                         {halls.length === 0 && (
-                            <p className="text-surface-500 text-sm text-center py-4">No halls created yet. Add your first hall above.</p>
+                            <p className="text-surface-500 text-sm text-center py-4">Hələ zal yaradılmayıb. İlk zalınızı yuxarıdan əlavə edin.</p>
                         )}
                     </div>
                 </div>
 
                 {/* ─── Categories ─── */}
                 <div className="card space-y-4">
-                    <h3 className="text-lg font-semibold text-surface-100">Menu Categories</h3>
+                    <h3 className="text-lg font-semibold text-surface-100">Menyu Kateqoriyaları</h3>
                     <p className="text-sm text-surface-400">
-                        Manage the categories available when adding menu items. Assign each to <strong>Kitchen</strong> or <strong>Bar</strong>.
+                        Menyu elementləri əlavə edərkən mövcud olan kateqoriyaları idarə edin. Hər birini <strong>Mətbəx</strong> və ya <strong>Bar</strong>-a təyin edin.
                     </p>
 
                     {/* Add new category */}
@@ -388,7 +388,7 @@ const Settings: React.FC = () => {
                             className="input flex-1"
                             value={newCategory}
                             onChange={(e) => setNewCategory(e.target.value)}
-                            placeholder="New category name..."
+                            placeholder="Yeni kateqoriya adı..."
                             onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
                         />
                         <select
@@ -396,12 +396,12 @@ const Settings: React.FC = () => {
                             value={newCategoryRole}
                             onChange={(e) => setNewCategoryRole(e.target.value as 'kitchen' | 'bar')}
                         >
-                            <option value="kitchen">🍳 Kitchen</option>
+                            <option value="kitchen">🍳 Mətbəx</option>
                             <option value="bar">🍸 Bar</option>
                         </select>
                         <button onClick={handleAddCategory} className="btn-primary">
                             <HiOutlinePlus className="w-4 h-4" />
-                            Add
+                            Əlavə et
                         </button>
                     </div>
 
@@ -426,7 +426,7 @@ const Settings: React.FC = () => {
                                             value={editRole}
                                             onChange={(e) => setEditRole(e.target.value as 'kitchen' | 'bar')}
                                         >
-                                            <option value="kitchen">🍳 Kitchen</option>
+                                            <option value="kitchen">🍳 Mətbəx</option>
                                             <option value="bar">🍸 Bar</option>
                                         </select>
                                         <button
@@ -452,9 +452,9 @@ const Settings: React.FC = () => {
                                                     ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
                                                     : 'bg-purple-500/15 text-purple-400 border-purple-500/30 hover:bg-purple-500/25'
                                                     }`}
-                                                title={`Click to switch to ${cat.role === 'kitchen' ? 'bar' : 'kitchen'}`}
+                                                title={`Klikləyib ${cat.role === 'kitchen' ? 'bara' : 'mətbəxə'} dəyişin`}
                                             >
-                                                {cat.role === 'kitchen' ? '🍳 Kitchen' : '🍸 Bar'}
+                                                {cat.role === 'kitchen' ? '🍳 Mətbəx' : '🍸 Bar'}
                                             </button>
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

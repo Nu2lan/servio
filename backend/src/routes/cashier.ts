@@ -18,7 +18,7 @@ router.get('/orders', async (_req: AuthRequest, res: Response): Promise<void> =>
 
         res.json(orders);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -27,7 +27,7 @@ router.patch('/orders/:id/pay', async (req: AuthRequest, res: Response): Promise
     try {
         const order = await Order.findById(req.params.id);
         if (!order) {
-            res.status(404).json({ message: 'Order not found.' });
+            res.status(404).json({ message: 'Sifariş tapılmadı.' });
             return;
         }
 
@@ -68,7 +68,7 @@ router.patch('/orders/:id/pay', async (req: AuthRequest, res: Response): Promise
             paidAt: order.paidAt,
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -77,7 +77,7 @@ router.patch('/orders/pay-batch', async (req: AuthRequest, res: Response): Promi
     try {
         const { orderIds } = req.body;
         if (!Array.isArray(orderIds) || orderIds.length === 0) {
-            res.status(400).json({ message: 'orderIds array is required.' });
+            res.status(400).json({ message: 'orderIds massivi tələb olunur.' });
             return;
         }
 
@@ -108,7 +108,7 @@ router.patch('/orders/pay-batch', async (req: AuthRequest, res: Response): Promi
 
         res.json(updatedOrders);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -117,7 +117,7 @@ router.patch('/orders/print-check', async (req: AuthRequest, res: Response): Pro
     try {
         const { orderIds } = req.body;
         if (!Array.isArray(orderIds) || orderIds.length === 0) {
-            res.status(400).json({ message: 'orderIds array is required.' });
+            res.status(400).json({ message: 'orderIds massivi tələb olunur.' });
             return;
         }
         await Order.updateMany(
@@ -126,7 +126,7 @@ router.patch('/orders/print-check', async (req: AuthRequest, res: Response): Pro
         );
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 

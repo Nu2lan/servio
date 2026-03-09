@@ -15,12 +15,12 @@ interface User {
 }
 
 const adminNav = [
-    { label: 'Dashboard', path: '/admin' },
-    { label: 'Menu', path: '/admin/menu' },
-    { label: 'Inventory', path: '/admin/inventory' },
-    { label: 'Users', path: '/admin/users' },
-    { label: 'Reports', path: '/admin/reports' },
-    { label: 'Settings', path: '/admin/settings' },
+    { label: 'Əsas səhifə', path: '/admin' },
+    { label: 'Menyu', path: '/admin/menu' },
+    { label: 'Anbar', path: '/admin/inventory' },
+    { label: 'İstifadəçilər', path: '/admin/users' },
+    { label: 'Hesabatlar', path: '/admin/reports' },
+    { label: 'Tənzimləmələr', path: '/admin/settings' },
 ];
 
 const UserManagement: React.FC = () => {
@@ -40,7 +40,7 @@ const UserManagement: React.FC = () => {
             const { data } = await api.get('/admin/users');
             setUsers(data);
         } catch {
-            toast.error('Failed to load users');
+            toast.error('İstifadəçiləri yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
         }
@@ -61,18 +61,18 @@ const UserManagement: React.FC = () => {
                 if (form.role !== 'admin') payload.pin = form.pin || '';
                 const { data } = await api.put(`/admin/users/${editingId}`, payload);
                 setUsers((prev) => prev.map((u) => (u._id === editingId ? { ...u, ...data } : u)));
-                toast.success('User updated');
+                toast.success('İstifadəçi yeniləndi');
             } else {
                 const payload: any = { ...form };
                 if (form.role !== 'admin' && form.pin) payload.pin = form.pin;
                 else delete payload.pin;
                 const { data } = await api.post('/admin/users', payload);
                 setUsers((prev) => [data, ...prev]);
-                toast.success('User created');
+                toast.success('İstifadəçi yaradıldı');
             }
             resetForm();
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Operation failed');
+            toast.error(error.response?.data?.message || 'Əməliyyat uğursuz oldu');
         }
     };
 
@@ -83,13 +83,13 @@ const UserManagement: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this user?')) return;
+        if (!confirm('Bu istifadəçini silmək istədiyinizə əminsiniz?')) return;
         try {
             await api.delete(`/admin/users/${id}`);
             setUsers((prev) => prev.filter((u) => u._id !== id));
-            toast.success('User deleted');
+            toast.success('İstifadəçi silindi');
         } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Failed to delete');
+            toast.error(error.response?.data?.message || 'Silmək mümkün olmadı');
         }
     };
 
@@ -97,9 +97,9 @@ const UserManagement: React.FC = () => {
         try {
             const { data } = await api.put(`/admin/users/${user._id}`, { isActive: !user.isActive });
             setUsers((prev) => prev.map((u) => (u._id === user._id ? { ...u, ...data } : u)));
-            toast.success(`User ${data.isActive ? 'activated' : 'deactivated'}`);
+            toast.success(`İstifadəçi ${data.isActive ? 'aktivləşdirildi' : 'deaktivləşdirildi'}`);
         } catch {
-            toast.error('Failed to update');
+            toast.error('Yeniləmək mümkün olmadı');
         }
     };
 
@@ -112,26 +112,26 @@ const UserManagement: React.FC = () => {
     };
 
     return (
-        <Layout title="Admin Panel" navItems={adminNav}>
+        <Layout title="Admin Paneli" navItems={adminNav}>
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-surface-100">User Management</h2>
+                    <h2 className="text-xl font-bold text-surface-100">İstifadəçi İdarəetməsi</h2>
                     <button
                         onClick={() => { resetForm(); setShowForm(!showForm); }}
                         className={showForm ? 'btn-secondary' : 'btn-primary'}
                     >
-                        {showForm ? <><HiOutlineX className="w-4 h-4" /> Cancel</> : <><HiOutlinePlus className="w-4 h-4" /> Add User</>}
+                        {showForm ? <><HiOutlineX className="w-4 h-4" /> Ləğv et</> : <><HiOutlinePlus className="w-4 h-4" /> İstifadəçi Əlavə Et</>}
                     </button>
                 </div>
 
                 {showForm && (
                     <div className="card animate-slide-up">
                         <h3 className="text-lg font-semibold text-surface-100 mb-4">
-                            {editingId ? 'Edit User' : 'Create New User'}
+                            {editingId ? 'İstifadəçini Redaktə Et' : 'Yeni İstifadəçi Yarat'}
                         </h3>
                         <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
                             <div className="flex-1 min-w-[140px]">
-                                <label className="label">Username</label>
+                                <label className="label">İstifadəçi adı</label>
                                 <input
                                     className="input"
                                     value={form.username}
@@ -142,7 +142,7 @@ const UserManagement: React.FC = () => {
                             </div>
                             {form.role === 'admin' && (
                                 <div>
-                                    <label className="label">{editingId ? 'New Password (optional)' : 'Password'}</label>
+                                    <label className="label">{editingId ? 'Yeni Şifrə (istəyə bağlı)' : 'Şifrə'}</label>
                                     <input
                                         className="input"
                                         type="password"
@@ -171,22 +171,22 @@ const UserManagement: React.FC = () => {
                                 </div>
                             )}
                             <div className="w-36">
-                                <label className="label">Role</label>
+                                <label className="label">Rol</label>
                                 <select
                                     className="input"
                                     value={form.role}
                                     onChange={(e) => setForm({ ...form, role: e.target.value })}
                                 >
-                                    <option value="waiter">Waiter</option>
-                                    <option value="kitchen">Kitchen</option>
+                                    <option value="waiter">Ofisiant</option>
+                                    <option value="kitchen">Mətbəx</option>
                                     <option value="bar">Bar</option>
-                                    <option value="cashier">Cashier</option>
+                                    <option value="cashier">Kassir</option>
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
                             <div>
                                 <button type="submit" className="btn-primary whitespace-nowrap">
-                                    {editingId ? 'Update User' : 'Create User'}
+                                    {editingId ? 'İstifadəçini Yenilə' : 'İstifadəçi Yarat'}
                                 </button>
                             </div>
                         </form>
@@ -222,15 +222,15 @@ const UserManagement: React.FC = () => {
                                                 : 'bg-red-500/20 text-red-400 border border-red-500/30'
                                                 }`}
                                         >
-                                            {user.isActive ? 'Active' : 'Inactive'}
+                                            {user.isActive ? 'Aktiv' : 'Deaktiv'}
                                         </button>
                                         <div className="flex-1" />
                                         <button onClick={() => handleEdit(user)} className="btn-ghost btn-sm">
-                                            <HiOutlinePencil className="w-4 h-4" /> Edit
+                                            <HiOutlinePencil className="w-4 h-4" /> Redaktə et
                                         </button>
                                         {user._id !== currentUser?.id && (
                                             <button onClick={() => handleDelete(user._id)} className="btn-ghost btn-sm text-red-400 hover:text-red-300">
-                                                <HiOutlineTrash className="w-4 h-4" /> Delete
+                                                <HiOutlineTrash className="w-4 h-4" /> Sil
                                             </button>
                                         )}
                                     </div>
@@ -243,12 +243,12 @@ const UserManagement: React.FC = () => {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-surface-700/50 text-surface-400">
-                                        <th className="text-left p-4 font-medium">Username</th>
-                                        <th className="text-left p-4 font-medium">Role</th>
-                                        <th className="text-center p-4 font-medium">PIN</th>
+                                        <th className="text-left p-4 font-medium">İstifadəçi adı</th>
+                                        <th className="text-left p-4 font-medium">Rol</th>
+                                        <th className="text-center p-4 font-medium">PİN</th>
                                         <th className="text-center p-4 font-medium">Status</th>
-                                        <th className="text-left p-4 font-medium">Created</th>
-                                        <th className="text-right p-4 font-medium">Actions</th>
+                                        <th className="text-left p-4 font-medium">Yaradılıb</th>
+                                        <th className="text-right p-4 font-medium">Əməliyyatlar</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -265,13 +265,13 @@ const UserManagement: React.FC = () => {
                                                 <button
                                                     onClick={() => toggleActive(user)}
                                                     disabled={user._id === currentUser?.id}
-                                                    title={user._id === currentUser?.id ? 'You cannot deactivate your own account' : ''}
+                                                    title={user._id === currentUser?.id ? 'Öz hesabınızı deaktiv edə bilməzsiniz' : ''}
                                                     className={`badge transition-all ${user._id === currentUser?.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${user.isActive
                                                         ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                                                         : 'bg-red-500/20 text-red-400 border border-red-500/30'
                                                         }`}
                                                 >
-                                                    {user.isActive ? 'Active' : 'Inactive'}
+                                                    {user.isActive ? 'Aktiv' : 'Deaktiv'}
                                                 </button>
                                             </td>
                                             <td className="p-4 text-surface-400">{new Date(user.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>

@@ -24,7 +24,16 @@ const Layout: React.FC<LayoutProps> = ({ children, title, navItems }) => {
         admin: 'badge-admin',
         waiter: 'badge-waiter',
         kitchen: 'badge-kitchen',
+        bar: 'badge-bar',
         cashier: 'badge-cashier',
+    };
+
+    const roleLabels: Record<string, string> = {
+        admin: 'Admin',
+        waiter: 'Ofisiant',
+        kitchen: 'Mətbəx',
+        bar: 'Bar',
+        cashier: 'Kassir',
     };
 
     return (
@@ -45,7 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title, navItems }) => {
                             <h1 className="text-lg font-bold text-brand-400">{title}</h1>
                             {user && (
                                 <span className={roleLabelColors[user.role] || 'badge'}>
-                                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                    {roleLabels[user.role] || user.role}
                                 </span>
                             )}
                         </div>
@@ -74,9 +83,9 @@ const Layout: React.FC<LayoutProps> = ({ children, title, navItems }) => {
                                     {user.username}
                                 </span>
                             )}
-                            <button onClick={handleLogout} className="btn-ghost btn-sm" title="Logout">
+                            <button onClick={handleLogout} className="btn-ghost btn-sm" title="Çıxış">
                                 <HiOutlineLogout className="w-4 h-4" />
-                                <span className="hidden sm:inline">Logout</span>
+                                <span className="hidden sm:inline">Çıxış</span>
                             </button>
 
                         </div>

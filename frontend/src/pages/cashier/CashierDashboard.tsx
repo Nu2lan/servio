@@ -57,8 +57,8 @@ const CashierDashboard: React.FC = () => {
 
         socket.on('new-order', (order: Order) => {
             setOrders((prev) => [order, ...prev]);
-            const displayTable = order.tableNumber.includes('-') ? order.tableNumber.replace('-', ' — Table ') : `Table #${order.tableNumber}`;
-            toast.success(`New order — ${displayTable}`, { icon: '🔔' });
+            const displayTable = order.tableNumber.includes('-') ? order.tableNumber.replace('-', ' — Masa ') : `Masa #${order.tableNumber}`;
+            toast.success(`Yeni sifariş — ${displayTable}`, { icon: '🔔' });
         });
 
         return () => {
@@ -71,7 +71,7 @@ const CashierDashboard: React.FC = () => {
             const { data } = await api.get('/cashier/orders');
             setOrders(data);
         } catch {
-            toast.error('Failed to load orders');
+            toast.error('Sifarişləri yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
         }
@@ -119,10 +119,11 @@ const CashierDashboard: React.FC = () => {
         const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === group.tableNumber);
         const displayNum = getDisplayTableNumber(group.tableNumber);
         const hallName = getOrderHall({ tableNumber: group.tableNumber } as Order);
-        const tableLabel = isCabinet ? group.tableNumber : hallName ? `${hallName} - Table #${displayNum}` : `Table #${displayNum}`;
-        const itemsHtml = group.items.map(item =>
+        const tableLabel = isCabinet ? group.tableNumber : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
+        const itemsList = group.items.map(item =>
             `<tr><td>${item.name}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${(item.price * item.quantity).toFixed(2)}</td></tr>`
         ).join('');
+        const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' + itemsList + '</tbody>';
         const waiterLabel = group.waiterNames.length > 0 ? group.waiterNames.join(', ') : '';
         const receiptHtml = [
             '<!DOCTYPE html><html><head><title>Check</title>',
@@ -146,7 +147,7 @@ const CashierDashboard: React.FC = () => {
             `<span>${new Date(group.latestTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
             '</div>',
             `<table>${itemsHtml}</table>`,
-            `<div class="t">Total: ${group.totalPrice.toFixed(2)} AZN</div>`,
+            `<div class="t">Cəmi: ${group.totalPrice.toFixed(2)} AZN</div>`,
             '<div class="f">Təşəkkürlər</div>',
             '</body></html>',
         ].join('');
@@ -175,9 +176,9 @@ const CashierDashboard: React.FC = () => {
         try {
             await api.patch('/cashier/orders/print-check', { orderIds: group.orderIds });
             setOrders(prev => prev.map(o => group.orderIds.includes(o._id) ? { ...o, checkPrinted: true } : o));
-            toast.success('Check printed');
+            toast.success('Çek çap edildi');
         } catch {
-            toast.error('Failed to save print status');
+            toast.error('Çap statusunu saxlamaq mümkün olmadı');
         }
     };
 
@@ -187,9 +188,9 @@ const CashierDashboard: React.FC = () => {
             setOrders((prev) =>
                 prev.map((o) => (o._id === orderId ? data : o))
             );
-            toast.success(data.status === 'paid' ? 'Order marked as paid' : 'Order marked as unpaid');
+            toast.success(data.status === 'paid' ? 'Sifariş ödənildi kimi işarələndi' : 'Sifariş ödənilmədi kimi işarələndi');
         } catch {
-            toast.error('Failed to update order');
+            toast.error('Sifarişi yeniləmək mümkün olmadı');
         }
     };
 
@@ -201,9 +202,9 @@ const CashierDashboard: React.FC = () => {
                 prev.map((o) => (updatedMap.has(o._id) ? (updatedMap.get(o._id) as Order) : o))
             );
             const tableNum = data.length > 0 ? getDisplayTableNumber(data[0].tableNumber) : '';
-            toast.success(`Table ${tableNum} paid`);
+            toast.success(`Masa ${tableNum} ödənildi`);
         } catch {
-            toast.error('Failed to update orders');
+            toast.error('Sifarişləri yeniləmək mümkün olmadı');
         }
     };
 
@@ -290,20 +291,20 @@ const CashierDashboard: React.FC = () => {
         .reduce((sum, o) => sum + o.totalPrice, 0);
 
     return (
-        <Layout title="Cashier Panel">
+        <Layout title="Kassa Paneli">
             <div className="space-y-6">
                 {/* Summary cards */}
                 <div className="grid grid-cols-3 gap-3 sm:gap-4">
                     <div className="card bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20 overflow-hidden p-3 sm:p-4">
-                        <p className="text-[10px] sm:text-xs text-emerald-400 font-medium truncate">Total Paid</p>
+                        <p className="text-[10px] sm:text-xs text-emerald-400 font-medium truncate">Cəmi Ödənilmiş</p>
                         <p className="text-lg sm:text-2xl font-bold text-emerald-400 truncate">{totalRevenue.toFixed(2)} AZN</p>
                     </div>
                     <div className="card bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20 overflow-hidden p-3 sm:p-4">
-                        <p className="text-[10px] sm:text-xs text-amber-400 font-medium truncate">Pending</p>
+                        <p className="text-[10px] sm:text-xs text-amber-400 font-medium truncate">Gözləyən</p>
                         <p className="text-lg sm:text-2xl font-bold text-amber-400 truncate">{pendingTotal.toFixed(2)} AZN</p>
                     </div>
                     <div className="card overflow-hidden p-3 sm:p-4">
-                        <p className="text-[10px] sm:text-xs text-surface-400 font-medium truncate">Total Orders</p>
+                        <p className="text-[10px] sm:text-xs text-surface-400 font-medium truncate">Ümumi Sifariş</p>
                         <p className="text-lg sm:text-2xl font-bold text-surface-100">{orders.length}</p>
                     </div>
                 </div>
@@ -318,7 +319,7 @@ const CashierDashboard: React.FC = () => {
                                     : 'bg-surface-800 text-surface-400 hover:text-surface-200'
                                     }`}
                             >
-                                All
+                                Hamısı
                                 <span className="ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] bg-white/20">{orders.length}</span>
                             </button>
                             {hallTabs.map((hall) => {
@@ -347,7 +348,7 @@ const CashierDashboard: React.FC = () => {
                                         : 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20'
                                         }`}
                                 >
-                                    🚪 Cabinets
+                                    🚪 Kabinetlər
                                     {cabinetOrderCount > 0 && (
                                         <span className="ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] bg-white/20">{cabinetOrderCount}</span>
                                     )}
@@ -362,9 +363,9 @@ const CashierDashboard: React.FC = () => {
                             onChange={(e) => setFilter(e.target.value as 'all' | 'confirmed' | 'paid')}
                             className="px-3 py-2 rounded-xl text-sm font-medium bg-surface-800 text-surface-200 border border-surface-700 focus:outline-none focus:border-brand-500 cursor-pointer"
                         >
-                            <option value="all">All</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="paid">Paid</option>
+                            <option value="all">Hamısı</option>
+                            <option value="confirmed">Təsdiqlənib</option>
+                            <option value="paid">Ödənilib</option>
                         </select>
                         <div className="flex items-center gap-2">
                             <button
@@ -375,7 +376,7 @@ const CashierDashboard: React.FC = () => {
                             </button>
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-soft" />
-                                <span className="text-xs text-surface-400">Live</span>
+                                <span className="text-xs text-surface-400">Canlı</span>
                             </div>
                         </div>
                     </div>
@@ -388,7 +389,7 @@ const CashierDashboard: React.FC = () => {
                     </div>
                 ) : filteredOrders.length === 0 ? (
                     <div className="card text-center py-12">
-                        <p className="text-surface-400">No orders found</p>
+                        <p className="text-surface-400">Sifariş tapılmadı</p>
                     </div>
                 ) : viewMode === 'grid' ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -403,9 +404,9 @@ const CashierDashboard: React.FC = () => {
                                             <span className={`text-sm font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : getDisplayTableNumber(group.tableNumber)}</span>
                                         </div>
                                         <div>
-                                            <span className="text-xs text-surface-300 font-medium">{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Table ${getDisplayTableNumber(group.tableNumber)}`}</span>
+                                            <span className="text-xs text-surface-300 font-medium">{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Masa ${getDisplayTableNumber(group.tableNumber)}`}</span>
                                             {group.orderCount > 1 && (
-                                                <p className="text-[10px] text-surface-500">{group.orderCount} orders</p>
+                                                <p className="text-[10px] text-surface-500">{group.orderCount} sifariş</p>
                                             )}
                                         </div>
                                     </div>
@@ -443,7 +444,7 @@ const CashierDashboard: React.FC = () => {
                                                 }`}
                                         >
                                             <HiOutlinePrinter className="w-3.5 h-3.5" />
-                                            {group.checkPrinted ? 'Printed' : 'Print'}
+                                            {group.checkPrinted ? 'Çap edilib' : 'Çap et'}
                                         </button>
                                     )}
                                     <button
@@ -457,9 +458,9 @@ const CashierDashboard: React.FC = () => {
                                             }`}
                                     >
                                         {group.status === 'paid' ? (
-                                            <><HiOutlineCash className="w-3.5 h-3.5" /> Unpaid</>
+                                            <><HiOutlineCash className="w-3.5 h-3.5" /> Ödənilməyib</>
                                         ) : (
-                                            <><HiOutlineCheck className="w-3.5 h-3.5" /> Paid</>
+                                            <><HiOutlineCheck className="w-3.5 h-3.5" /> Ödənilib</>
                                         )}
                                     </button>
                                 </div>
@@ -480,9 +481,9 @@ const CashierDashboard: React.FC = () => {
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-surface-100">
-                                                {isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Table #${getDisplayTableNumber(group.tableNumber)}`}
+                                                {isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Masa #${getDisplayTableNumber(group.tableNumber)}`}
                                                 {group.orderCount > 1 && (
-                                                    <span className="ml-2 text-xs text-surface-500 font-normal bg-surface-800 px-2 py-0.5 rounded-md">{group.orderCount} orders</span>
+                                                    <span className="ml-2 text-xs text-surface-500 font-normal bg-surface-800 px-2 py-0.5 rounded-md">{group.orderCount} sifariş</span>
                                                 )}
                                             </h3>
                                             <p className="text-xs text-surface-400">
@@ -502,10 +503,10 @@ const CashierDashboard: React.FC = () => {
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="text-surface-400 border-b border-surface-700/50">
-                                                <th className="text-left py-2 font-medium">Item</th>
-                                                <th className="text-center py-2 font-medium">Qty</th>
-                                                <th className="text-right py-2 font-medium">Price</th>
-                                                <th className="text-right py-2 font-medium">Subtotal</th>
+                                                <th className="text-left py-2 font-medium">Məhsul</th>
+                                                <th className="text-center py-2 font-medium">Say</th>
+                                                <th className="text-right py-2 font-medium">Qiymət</th>
+                                                <th className="text-right py-2 font-medium">Məbləğ</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -523,7 +524,7 @@ const CashierDashboard: React.FC = () => {
                                         <tfoot>
                                             <tr className="border-t border-surface-600">
                                                 <td colSpan={3} className="py-3 text-right font-bold text-surface-200">
-                                                    Total
+                                                    Cəmi
                                                 </td>
                                                 <td className="py-3 text-right text-lg font-bold text-brand-400">
                                                     {group.totalPrice.toFixed(2)} AZN
@@ -543,7 +544,7 @@ const CashierDashboard: React.FC = () => {
                                                 }`}
                                         >
                                             <HiOutlinePrinter className="w-4 h-4" />
-                                            {group.checkPrinted ? 'Printed ✓' : 'Print Check'}
+                                            {group.checkPrinted ? 'Çap edilib ✓' : 'Çək çap et'}
                                         </button>
                                     )}
                                     <button
@@ -559,12 +560,12 @@ const CashierDashboard: React.FC = () => {
                                         {group.status === 'paid' ? (
                                             <>
                                                 <HiOutlineCash className="w-4 h-4" />
-                                                Mark Unpaid
+                                                Ödənilmədi kimi işarələ
                                             </>
                                         ) : (
                                             <>
                                                 <HiOutlineCheck className="w-4 h-4" />
-                                                Mark as Paid
+                                                Ödənildi kimi işarələ
                                             </>
                                         )}
                                     </button>

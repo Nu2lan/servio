@@ -32,10 +32,10 @@ const PinLoginPage: React.FC = () => {
             setLoading(true);
             try {
                 const user = await pinLogin(newPin);
-                toast.success(`Welcome, ${user.username}!`);
+                toast.success(`Xoş gəldiniz, ${user.username}!`);
                 navigate(roleRedirects[user.role] || '/login');
             } catch (err: any) {
-                const msg = err.response?.data?.message || 'Invalid PIN';
+                const msg = err.response?.data?.message || 'Yanlış PİN';
                 setError(msg);
                 setPin('');
             } finally {
@@ -71,7 +71,7 @@ const PinLoginPage: React.FC = () => {
                         className="h-20 mx-auto mb-6 object-contain drop-shadow-lg select-none"
                         draggable={false}
                     />
-                    <p className="text-surface-400 text-lg mt-2">Enter your PIN to sign in</p>
+                    <p className="text-surface-400 text-lg mt-2">Giriş üçün PİN kodunuzu daxil edin</p>
                 </div>
 
                 {/* PIN card */}
@@ -82,10 +82,10 @@ const PinLoginPage: React.FC = () => {
                             <div
                                 key={i}
                                 className={`w-5 h-5 rounded-full transition-all duration-200 ${error
-                                        ? 'bg-red-500 shadow-lg shadow-red-500/30'
-                                        : i < pin.length
-                                            ? 'bg-brand-500 scale-125 shadow-lg shadow-brand-500/30'
-                                            : 'bg-surface-700 border-2 border-surface-600'
+                                    ? 'bg-red-500 shadow-lg shadow-red-500/30'
+                                    : i < pin.length
+                                        ? 'bg-brand-500 scale-125 shadow-lg shadow-brand-500/30'
+                                        : 'bg-surface-700 border-2 border-surface-600'
                                     }`}
                             />
                         ))}
@@ -124,7 +124,7 @@ const PinLoginPage: React.FC = () => {
                             disabled={loading}
                             className="h-20 rounded-xl text-base font-medium text-surface-400 bg-surface-800/30 border border-surface-700/30 hover:bg-surface-700/50 hover:text-surface-200 active:scale-95 transition-all duration-150 disabled:opacity-50"
                         >
-                            Clear
+                            Təmizlə
                         </button>
                         <button
                             onClick={() => handleDigit('0')}
@@ -149,11 +149,11 @@ const PinLoginPage: React.FC = () => {
                     className="flex items-center justify-center gap-2 w-full mt-6 py-3 text-sm text-surface-500 hover:text-brand-400 transition-colors"
                 >
                     <HiOutlineShieldCheck className="w-4 h-4" />
-                    Login as Admin
+                    Admin kimi daxil ol
                 </button>
 
                 <p className="text-center text-surface-500 text-xs mt-4">
-                    Servio — Ordering Management System
+                    Servio — Sifarişlərin İdarəetmə Sistemi
                 </p>
             </div>
         </div>

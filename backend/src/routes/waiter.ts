@@ -4,6 +4,7 @@ import Inventory from '../models/Inventory';
 import InventoryLog from '../models/InventoryLog';
 import Order from '../models/Order';
 import Settings from '../models/Settings';
+import User from '../models/User';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { getIO } from '../socket';
 
@@ -20,7 +21,7 @@ router.get('/menu', async (_req: AuthRequest, res: Response): Promise<void> => {
             .sort({ category: 1, name: 1 });
         res.json(items);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -30,7 +31,7 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
         const { tableNumber, items } = req.body;
 
         if (!tableNumber || !items || !Array.isArray(items) || items.length === 0) {
-            res.status(400).json({ message: 'Table number and items are required.' });
+            res.status(400).json({ message: 'Masa nömrəsi və məhsullar tələb olunur.' });
             return;
         }
 
@@ -45,7 +46,7 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
             const menuItem = await MenuItem.findById(item.menuItemId)
                 .populate('ingredients.inventoryItem');
             if (!menuItem || !menuItem.isActive) {
-                res.status(400).json({ message: `Menu item not found: ${item.menuItemId}` });
+                res.status(400).json({ message: `Menyu məhsulu tapılmadı: ${item.menuItemId}` });
                 return;
             }
 
@@ -79,7 +80,7 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
             const inventory = await Inventory.findById(invId);
             if (!inventory || inventory.stock < req_.totalNeeded) {
                 res.status(400).json({
-                    message: `Insufficient stock for "${inventory?.name || 'Unknown'}". Required: ${req_.totalNeeded}, Available: ${inventory?.stock || 0}`,
+                    message: `"${inventory?.name || 'Naməlum'}" üçün kifayət qədər ehtiyat yoxdur. Tələb olunan: ${req_.totalNeeded}, Mövcud: ${inventory?.stock || 0}`,
                 });
                 return;
             }
@@ -227,7 +228,7 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
         });
     } catch (error) {
         console.error('Order creation error:', error);
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -250,7 +251,7 @@ router.get('/busy-tables', async (_req: AuthRequest, res: Response): Promise<voi
         }));
         res.json(result);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -265,7 +266,7 @@ router.get('/table-orders/:tableNumber', async (req: AuthRequest, res: Response)
             .sort({ createdAt: -1 });
         res.json(orders);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -278,7 +279,7 @@ router.get('/orders', async (req: AuthRequest, res: Response): Promise<void> => 
 
         res.json(orders);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -288,12 +289,12 @@ router.patch('/change-table', async (req: AuthRequest, res: Response): Promise<v
         const { fromTable, toTable } = req.body;
 
         if (!fromTable || !toTable) {
-            res.status(400).json({ message: 'fromTable and toTable are required.' });
+            res.status(400).json({ message: 'fromTable və toTable tələb olunur.' });
             return;
         }
 
         if (fromTable === toTable) {
-            res.status(400).json({ message: 'Cannot change to the same table.' });
+            res.status(400).json({ message: 'Eyni masaya dəyişdirilə bilməz.' });
             return;
         }
 
@@ -304,7 +305,7 @@ router.patch('/change-table', async (req: AuthRequest, res: Response): Promise<v
         );
 
         if (result.modifiedCount === 0) {
-            res.status(404).json({ message: 'No confirmed orders found for this table.' });
+            res.status(404).json({ message: 'Bu masa üçün təsdiqlənmiş sifariş tapılmadı.' });
             return;
         }
 
@@ -329,10 +330,96 @@ router.patch('/change-table', async (req: AuthRequest, res: Response): Promise<v
         // Notify cashier about the table change so they can refresh
         io.to('cashier').emit('table-changed', { fromTable, toTable });
 
-        res.json({ message: `${result.modifiedCount} order(s) moved from ${fromTable} to ${toTable}.` });
+        res.json({ message: `${result.modifiedCount} sifariş ${fromTable} masasından ${toTable} masasına köçürüldü.` });
     } catch (error) {
         console.error('Change table error:', error);
         res.status(500).json({ message: 'Server error.' });
+    }
+});
+
+// POST /api/waiter/table-orders/:tableNumber/delete-item — delete a single quantity of an item
+router.post('/table-orders/:tableNumber/delete-item', async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { tableNumber } = req.params;
+        const { itemName, pin } = req.body;
+
+        if (!itemName || !pin) {
+            res.status(400).json({ message: 'itemName və pin tələb olunur.' });
+            return;
+        }
+
+        // Verify PIN belongs to cashier or admin
+        const authUser = await User.findOne({ pin, isActive: true });
+        if (!authUser) {
+            res.status(401).json({ message: 'Yanlış PİN.' });
+            return;
+        }
+        if (authUser.role !== 'admin' && authUser.role !== 'cashier') {
+            res.status(403).json({ message: 'Yalnız Kassir və ya Admin sifarişləri redaktə edə bilər.' });
+            return;
+        }
+
+        // Find the most recent confirmed order for this table that contains this item
+        const order = await Order.findOne({
+            tableNumber,
+            status: 'confirmed',
+            'items.name': itemName
+        }).sort({ createdAt: -1 });
+
+        if (!order) {
+            res.status(404).json({ message: 'Məhsul bu masa üçün heç bir təsdiqlənmiş sifarişdə tapılmadı.' });
+            return;
+        }
+
+        // Find the item within the order
+        const itemIndex = order.items.findIndex(i => i.name === itemName);
+        if (itemIndex === -1) {
+            res.status(404).json({ message: 'Məhsul sifarişdə tapılmadı.' });
+            return;
+        }
+
+        const item = order.items[itemIndex];
+
+        // Decrement quantity or remove item
+        if (item.quantity > 1) {
+            order.items[itemIndex].quantity -= 1;
+        } else {
+            order.items.splice(itemIndex, 1);
+        }
+
+        const io = getIO();
+
+        if (order.items.length === 0) {
+            // Delete the entire order if no items left
+            await order.deleteOne();
+        } else {
+            // Recalculate total price
+            order.totalPrice = order.items.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+            await order.save();
+        }
+
+        // Check if table is still busy
+        const remainingOrders = await Order.countDocuments({ tableNumber, status: 'confirmed' });
+        if (remainingOrders === 0) {
+            io.to('waiter').emit('table-freed', { tableNumber });
+            io.to('cashier').emit('table-freed', { tableNumber });
+        } else {
+            const latest = await Order.findOne({ tableNumber, status: 'confirmed' }).sort({ createdAt: -1 });
+            if (latest) {
+                io.to('waiter').emit('table-busy', {
+                    tableNumber,
+                    latestOrderAt: (latest as any).createdAt?.toISOString() || new Date().toISOString()
+                });
+            }
+        }
+
+        // Notify cashier to refresh their view
+        io.to('cashier').emit('order-changed', { tableNumber });
+
+        res.json({ message: 'Məhsul uğurla silindi.' });
+    } catch (error) {
+        console.error('Delete item error:', error);
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 

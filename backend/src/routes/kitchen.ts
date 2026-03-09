@@ -66,7 +66,7 @@ router.get('/orders', async (req: AuthRequest, res: Response): Promise<void> => 
 
         res.json(filtered);
     } catch (error) {
-        res.status(500).json({ message: 'Server error.' });
+        res.status(500).json({ message: 'Server xətası.' });
     }
 });
 
@@ -78,12 +78,12 @@ router.patch('/orders/:orderId/items/:itemIndex', async (req: AuthRequest, res: 
 
         const order = await Order.findById(orderId);
         if (!order) {
-            res.status(404).json({ message: 'Order not found.' });
+            res.status(404).json({ message: 'Sifariş tapılmadı.' });
             return;
         }
 
         if (idx < 0 || idx >= order.items.length) {
-            res.status(404).json({ message: 'Item not found.' });
+            res.status(404).json({ message: 'Məhsul tapılmadı.' });
             return;
         }
 
@@ -98,7 +98,7 @@ router.patch('/orders/:orderId/items/:itemIndex', async (req: AuthRequest, res: 
             itemIndex: idx,
         });
 
-        res.json({ message: 'Item marked as prepared.' });
+        res.json({ message: 'Məhsul hazır kimi işarələndi.' });
     } catch (error) {
         res.status(500).json({ message: 'Server error.' });
     }

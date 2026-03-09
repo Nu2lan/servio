@@ -4,30 +4,30 @@ import { Link } from 'react-router-dom';
 import { HiOutlineClipboardList, HiOutlineCube, HiOutlineUsers, HiOutlineChartBar, HiOutlineCog } from 'react-icons/hi';
 
 const sections = [
-    { label: 'Menu Management', desc: 'Add, edit, or remove menu items', path: '/admin/menu', icon: HiOutlineClipboardList, color: 'from-brand-500/20 to-brand-600/10 border-brand-500/20' },
-    { label: 'Inventory', desc: 'Manage stock levels for all items', path: '/admin/inventory', icon: HiOutlineCube, color: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/20' },
-    { label: 'Users', desc: 'Create and manage staff accounts', path: '/admin/users', icon: HiOutlineUsers, color: 'from-blue-500/20 to-blue-600/10 border-blue-500/20' },
-    { label: 'Reports', desc: 'Order history and inventory logs', path: '/admin/reports', icon: HiOutlineChartBar, color: 'from-purple-500/20 to-purple-600/10 border-purple-500/20' },
-    { label: 'Settings', desc: 'Table count and category management', path: '/admin/settings', icon: HiOutlineCog, color: 'from-gray-500/20 to-gray-600/10 border-gray-500/20' },
+    { label: 'Menyu İdarəetməsi', desc: 'Menyu elementləri əlavə edin, redaktə edin və ya silin', path: '/admin/menu', icon: HiOutlineClipboardList, color: 'from-brand-500/20 to-brand-600/10 border-brand-500/20' },
+    { label: 'Anbar', desc: 'Bütün elementlər üçün ehtiyat səviyyələrini idarə edin', path: '/admin/inventory', icon: HiOutlineCube, color: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/20' },
+    { label: 'İstifadəçilər', desc: 'İşçi hesabları yaradın və idarə edin', path: '/admin/users', icon: HiOutlineUsers, color: 'from-blue-500/20 to-blue-600/10 border-blue-500/20' },
+    { label: 'Hesabatlar', desc: 'Sifariş tarixçəsi və anbar jurnalları', path: '/admin/reports', icon: HiOutlineChartBar, color: 'from-purple-500/20 to-purple-600/10 border-purple-500/20' },
+    { label: 'Tənzimləmələr', desc: 'Masa sayı və kateqoriya idarəetməsi', path: '/admin/settings', icon: HiOutlineCog, color: 'from-gray-500/20 to-gray-600/10 border-gray-500/20' },
 ];
 
 const AdminDashboard: React.FC = () => {
     return (
         <Layout
-            title="Admin Panel"
+            title="Admin Paneli"
             navItems={[
-                { label: 'Dashboard', path: '/admin' },
-                { label: 'Menu', path: '/admin/menu' },
-                { label: 'Inventory', path: '/admin/inventory' },
-                { label: 'Users', path: '/admin/users' },
-                { label: 'Reports', path: '/admin/reports' },
-                { label: 'Settings', path: '/admin/settings' },
+                { label: 'Əsas səhifə', path: '/admin' },
+                { label: 'Menyu', path: '/admin/menu' },
+                { label: 'Anbar', path: '/admin/inventory' },
+                { label: 'İstifadəçilər', path: '/admin/users' },
+                { label: 'Hesabatlar', path: '/admin/reports' },
+                { label: 'Tənzimləmələr', path: '/admin/settings' },
             ]}
         >
             <div className="space-y-8">
                 <div>
-                    <h2 className="text-2xl font-bold text-surface-100">Admin Dashboard</h2>
-                    <p className="text-surface-400">Manage your restaurant from here</p>
+                    <h2 className="text-2xl font-bold text-surface-100">Admin İdarə Paneli</h2>
+                    <p className="text-surface-400">Restoranınızı buradan idarə edin</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 sm:gap-6">
