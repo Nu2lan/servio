@@ -34,7 +34,7 @@ interface Hall {
 const IDLE_TIMEOUT_MS = 5000; // 5 seconds
 
 const WaiterDashboard: React.FC = () => {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [cart, setCart] = useState<CartItem[]>([]);
     const [tableNumber, setTableNumber] = useState<string | null>(null);
@@ -436,9 +436,9 @@ const WaiterDashboard: React.FC = () => {
                                     const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Table #${displayNum}` : `Table #${displayNum}`;
                                     const entries2 = Array.from(merged2.entries());
                                     const receiptTotal = entries2.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
-                                    const itemsHtml = entries2.map(([name, { qty, price }]) =>
+                                    const itemsHtml = '<thead><tr><td style="border-bottom:1px dashed #000;padding-bottom:3px">M\u0259hsul ad\u0131</td><td style="text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Qty</td><td style="text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiym\u0259t</td></tr></thead><tbody>' + entries2.map(([name, { qty, price }]) =>
                                         `<tr><td>${name}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${(price * qty).toFixed(2)}</td></tr>`
-                                    ).join('');
+                                    ).join('') + '</tbody>';
                                     const receiptHtml = [
                                         '<!DOCTYPE html><html><head><title>Check</title>',
                                         '<style>',
@@ -457,6 +457,7 @@ const WaiterDashboard: React.FC = () => {
                                         '<div class="pub">Art\u0131bir</div>',
                                         `<h3>${tableLabel}</h3>`,
                                         '<div class="info">',
+                                        `<span>Ofisiant: ${user?.username || ''}</span>`,
                                         `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
                                         '</div>',
                                         `<table>${itemsHtml}</table>`,
