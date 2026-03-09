@@ -18,6 +18,7 @@ export interface IOrder extends Document {
     status: OrderStatus;
     createdBy: mongoose.Types.ObjectId;
     paidAt?: Date;
+    paymentMethod?: 'cash' | 'card';
     checkPrinted: boolean;
 }
 
@@ -82,6 +83,10 @@ const orderSchema = new Schema<IOrder>(
         },
         paidAt: {
             type: Date,
+        },
+        paymentMethod: {
+            type: String,
+            enum: ['cash', 'card'],
         },
         checkPrinted: {
             type: Boolean,

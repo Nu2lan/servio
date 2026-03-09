@@ -61,8 +61,13 @@ const CashierDashboard: React.FC = () => {
             toast.success(`Yeni sifariş — ${displayTable}`, { icon: '🔔' });
         });
 
+        socket.on('orders-paid', () => {
+            fetchOrders();
+        });
+
         return () => {
             socket.off('new-order');
+            socket.off('orders-paid');
         };
     }, []);
 
