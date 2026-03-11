@@ -144,19 +144,35 @@ const WaiterDashboard: React.FC = () => {
             `).join('');
 
             const headerHtml = '<thead><tr><td style="width: 70%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 30%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td></tr></thead>';
-            const tableLabel = tNum.includes('-') ? `Masa #${tNum.split('-').pop()}` : `Masa #${tNum}`;
+            
+            const dashIdx = tNum.lastIndexOf('-');
+            const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tNum);
+            
+            let displayNum = tNum;
+            let hallName = null;
+            if (dashIdx > 0 && !isCabinet) {
+               hallName = tNum.substring(0, dashIdx);
+               displayNum = tNum.substring(dashIdx + 1);
+            } else if (!isCabinet) {
+               const parsedInt = parseInt(tNum);
+               if (!isNaN(parsedInt)) {
+                   const hall = halls.find(h => h.type !== 'cabinet' && h.tables.includes(parsedInt));
+                   if (hall) hallName = hall.name;
+               }
+            }
+            
+            const tableLabel = isCabinet ? tNum : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
 
             const d = new Date(createdAt);
             const dateStr = `${d.toLocaleDateString('az-AZ')} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`;
 
             const containerHTML = `
                 <div class="receipt-page" style="${addPageBreak ? 'page-break-after: always; break-after: page;' : ''}">
-                    <div class="pub">Artıbir</div>
-                    <h3>${tableLabel}</h3>
-                    <div style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px dashed #000; padding-bottom: 2mm;">${title}</div>
-                    <div class="info">
-                        <span>${user?.username ? `Ofisiant: ${user.username}` : ''}</span>
-                        <span>${dateStr}</span>
+                    <div style="text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px; text-transform: uppercase;">${title}</div>
+                    <h3 style="margin-bottom: 3mm;">${tableLabel}</h3>
+                    <div style="border-bottom: 1px dashed #000; padding-bottom: 2mm; margin-bottom: 3mm;">
+                        <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px;">${user?.username ? `Ofisiant: ${user.username}` : ''}</div>
+                        <div style="font-size: 14px; font-weight: bold;">Tarix: ${dateStr}</div>
                     </div>
                     <table>${headerHtml}<tbody>${trs}</tbody></table>
                     <div class="f">Nuş Olsun!</div>
