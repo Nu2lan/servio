@@ -612,7 +612,7 @@ const WaiterDashboard: React.FC = () => {
 
     // ─── Previous Orders Popup (portal to body for full-screen overlay) ───
     const previousOrdersPopup = showOrderPopup && tableOrders.length > 0 && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => { if (!showPinModal) { setShowOrderPopup(false); setShowPaymentOptions(false); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => { if (!showPinModal) { setShowOrderPopup(false); setShowPaymentOptions(false); setIsEditingOrder(false); } }}>
             {showPinModal ? (
                 <div className="bg-surface-800 p-6 rounded-3xl w-full max-w-sm space-y-8 shadow-2xl border border-surface-700 relative z-50" onClick={e => e.stopPropagation()}>
                     <div className="flex justify-between items-center">
@@ -660,7 +660,7 @@ const WaiterDashboard: React.FC = () => {
                             Masa {tableNumber?.includes('-') ? tableNumber.split('-').pop() : tableNumber}
                             {isEditingOrder && <span className="text-xs sm:text-sm bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/20 ml-2">Redaktə Rejimi</span>}
                         </h3>
-                        <button onClick={() => setShowOrderPopup(false)} className="text-surface-400 hover:text-white bg-surface-800 p-2.5 rounded-full hover:bg-red-500 transition-all">
+                        <button onClick={() => { setShowOrderPopup(false); setIsEditingOrder(false); }} className="text-surface-400 hover:text-white bg-surface-800 p-2.5 rounded-full hover:bg-red-500 transition-all">
                             <HiOutlineX className="w-6 h-6" />
                         </button>
                     </div>
