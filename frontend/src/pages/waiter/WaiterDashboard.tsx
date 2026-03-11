@@ -164,15 +164,19 @@ const WaiterDashboard: React.FC = () => {
             const tableLabel = isCabinet ? tNum : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
 
             const d = new Date(createdAt);
-            const dateStr = `${d.toLocaleDateString('az-AZ')} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            const dateStr = `${dd}/${mm}/${yyyy} ${timeStr}`;
 
             const containerHTML = `
                 <div class="receipt-page" style="${addPageBreak ? 'page-break-after: always; break-after: page;' : ''}">
                     <div style="text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px; text-transform: uppercase;">${title}</div>
                     <h3 style="margin-bottom: 3mm;">${tableLabel}</h3>
-                    <div style="border-bottom: 1px dashed #000; padding-bottom: 2mm; margin-bottom: 3mm;">
-                        <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px;">${user?.username ? `Ofisiant: ${user.username}` : ''}</div>
-                        <div style="font-size: 14px; font-weight: bold;">Tarix: ${dateStr}</div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #000; padding-bottom: 2mm; margin-bottom: 3mm; font-size: 14px; font-weight: bold;">
+                        <span>${user?.username ? user.username : ''}</span>
+                        <span>${dateStr}</span>
                     </div>
                     <table>${headerHtml}<tbody>${trs}</tbody></table>
                     <div class="f">Nuş Olsun!</div>
