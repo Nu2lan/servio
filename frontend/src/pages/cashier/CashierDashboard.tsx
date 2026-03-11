@@ -3,7 +3,8 @@ import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import { getSocket } from '../../lib/socket';
 import toast from 'react-hot-toast';
-import { HiOutlineCash, HiOutlineCheck, HiOutlineViewGrid, HiOutlineViewList, HiOutlinePrinter } from 'react-icons/hi';
+import { HiOutlineCash, HiOutlineCheck, HiOutlineViewGrid, HiOutlineViewList, HiOutlinePrinter, HiOutlineDocumentText } from 'react-icons/hi';
+import { useAuth } from '../../context/AuthContext';
 
 interface OrderItem {
     name: string;
@@ -42,9 +43,10 @@ interface GroupedOrder {
 }
 
 const CashierDashboard: React.FC = () => {
+    const { user } = useAuth();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'confirmed' | 'paid'>('confirmed');
+    const [filter, setFilter] = useState<'all' | 'confirmed' | 'paid'>('all');
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
     const [halls, setHalls] = useState<Hall[]>([]);
     const [activeTab, setActiveTab] = useState<string>('all');
@@ -120,6 +122,85 @@ const CashierDashboard: React.FC = () => {
     const isCabinetOrder = (order: Order): boolean => {
         return halls.some(h => h.type === 'cabinet' && h.name === order.tableNumber);
     };
+
+    const handlePrintEndOfDay = () => {
+        const paidOrders = orders.filter(o => o.status === 'paid');
+        if (paidOrders.length === 0) {
+            toast.error('Günün sonu hesabatı üçün ödənilmiş sifariş yoxdur');
+            return;
+        }
+
+        const merged = new Map<string, { qty: number; price: number }>();
+        let totalIncome = 0;
+
+        for (const order of paidOrders) {
+            for (const item of order.items) {
+                const existing = merged.get(item.name);
+                if (existing) {
+                    existing.qty += item.quantity;
+                } else {
+                    merged.set(item.name, { qty: item.quantity, price: item.price });
+                }
+            }
+            totalIncome += order.totalPrice;
+        }
+
+        const itemsList = Array.from(merged.entries()).map(([name, { qty, price }]) =>
+            `<tr><td>${name}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${(price * qty).toFixed(2)}</td></tr>`
+        ).join('');
+
+        const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' + itemsList + '</tbody>';
+        
+        const cashierName = user?.username || '';
+        const receiptHtml = [
+            '<!DOCTYPE html><html><head><title>Gün Sonu Check</title>',
+            '<style>',
+            '@page { size: 80mm auto; margin: 0 }',
+            '* { margin: 0; padding: 0; box-sizing: border-box }',
+            "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
+            '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
+            'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
+            '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
+            'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
+            'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
+            '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right; color: #000; }',
+            '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
+            '</style></head>',
+            '<body>',
+            '<div class="pub">Artıbir</div>',
+            `<h3>Gün sonu</h3>`,
+            '<div class="info">',
+            cashierName ? `<span>${cashierName}</span>` : '<span></span>',
+            `<span>${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
+            '</div>',
+            `<table>${itemsHtml}</table>`,
+            `<div class="t">Cəmi: ${totalIncome.toFixed(2)} AZN</div>`,
+            '<div class="f">Təşəkkürlər</div>',
+            '</body></html>',
+        ].join('');
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.top = '-10000px';
+        iframe.style.left = '-10000px';
+        iframe.style.width = '80mm';
+        iframe.style.height = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (doc) {
+            doc.open();
+            doc.write(receiptHtml);
+            doc.close();
+            setTimeout(() => {
+                iframe.contentWindow?.print();
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                }, 500);
+            }, 250);
+        }
+    };
+
     const handlePrintCheck = async (groupKey: string, group: GroupedOrder) => {
         const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === group.tableNumber);
         const displayNum = getDisplayTableNumber(group.tableNumber);
@@ -378,6 +459,13 @@ const CashierDashboard: React.FC = () => {
                                 className="p-2 rounded-xl bg-surface-800 text-surface-400 hover:text-surface-200 transition-all"
                             >
                                 {viewMode === 'list' ? <HiOutlineViewGrid className="w-5 h-5" /> : <HiOutlineViewList className="w-5 h-5" />}
+                            </button>
+                            <button
+                                onClick={handlePrintEndOfDay}
+                                className="px-3 py-1.5 rounded-xl bg-surface-800 text-brand-400 border border-brand-500/30 hover:bg-brand-500 hover:text-white hover:border-brand-500 transition-all flex items-center gap-1.5 text-sm font-semibold whitespace-nowrap"
+                            >
+                                <HiOutlineDocumentText className="w-4 h-4" />
+                                Gün sonu
                             </button>
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-soft" />
