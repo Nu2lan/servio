@@ -148,8 +148,8 @@ const WaiterDashboard: React.FC = () => {
                 </tr>
             `).join('');
 
-            return `
-                <div style="width: 100%; max-width: 300px; margin: 0 auto; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; padding: 10px; ${addPageBreak ? 'page-break-after: always;' : ''}">
+            const containerHTML = `
+                <div style="width: 100%; max-width: 300px; margin: 0 auto; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; padding: 10px;">
                     <div style="text-align: center; margin-bottom: 10px;">
                         <h2 style="margin: 0; font-size: 18px; text-transform: uppercase;">${title}</h2>
                         <div style="font-size: 12px; margin-top: 5px; color: #333;">Masa: <b>${tNum}</b></div>
@@ -167,6 +167,11 @@ const WaiterDashboard: React.FC = () => {
                     </div>
                 </div>
             `;
+
+            if (addPageBreak) {
+                return containerHTML + '\n<div style="page-break-after: always; break-after: page;"></div>\n';
+            }
+            return containerHTML;
         };
 
         const kitchenHTML = generateReceiptHTML('Mətbəx', kitchenItems, barItems.length > 0);
@@ -197,12 +202,11 @@ const WaiterDashboard: React.FC = () => {
                 `);
                 doc.close();
 
-                iframe.onload = () => {
-                    setTimeout(() => {
-                        iframe.contentWindow?.print();
-                        setTimeout(() => document.body.removeChild(iframe), 500);
-                    }, 250);
-                };
+                // Wait slightly for DOM to settle before printing
+                setTimeout(() => {
+                    iframe.contentWindow?.print();
+                    setTimeout(() => document.body.removeChild(iframe), 500);
+                }, 250);
             } else {
                 // Fallback if no doc
                 document.body.removeChild(iframe);
