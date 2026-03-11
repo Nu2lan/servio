@@ -133,44 +133,36 @@ const WaiterDashboard: React.FC = () => {
 
         const { tableNumber: tNum, kitchenItems, barItems, createdAt } = newOrderToPrint;
 
-        const formatDate = (dateString: string) => {
-            const d = new Date(dateString);
-            return `${d.toLocaleDateString('az-AZ')} ${d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
-        };
-
         const generateReceiptHTML = (title: string, items: any[], addPageBreak: boolean) => {
             if (items.length === 0) return '';
             
             const trs = items.map(item => `
                 <tr>
-                    <td style="padding: 4px 0;">${item.name}</td>
-                    <td style="text-align: right; font-weight: bold;">${item.quantity} }<span style="font-size: 10px; font-weight: normal;">x</span></td>
+                    <td>${item.name}</td>
+                    <td style="text-align:center">${item.quantity}</td>
                 </tr>
             `).join('');
 
+            const headerHtml = '<thead><tr><td style="width: 70%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 30%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td></tr></thead>';
+            const tableLabel = tNum.includes('-') ? `Masa #${tNum.split('-').pop()}` : `Masa #${tNum}`;
+
+            const d = new Date(createdAt);
+            const dateStr = `${d.toLocaleDateString('az-AZ')} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
             const containerHTML = `
-                <div style="width: 100%; max-width: 300px; margin: 0 auto; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; padding: 10px;">
-                    <div style="text-align: center; margin-bottom: 10px;">
-                        <h2 style="margin: 0; font-size: 18px; text-transform: uppercase;">${title}</h2>
-                        <div style="font-size: 12px; margin-top: 5px; color: #333;">Masa: <b>${tNum}</b></div>
-                        <div style="font-size: 10px; color: #666; margin-top: 2px;">Tarix: ${formatDate(createdAt)}</div>
+                <div class="receipt-page" style="${addPageBreak ? 'page-break-after: always; break-after: page;' : ''}">
+                    <div class="pub">Artıbir</div>
+                    <h3>${tableLabel}</h3>
+                    <div style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px dashed #000; padding-bottom: 2mm;">${title}</div>
+                    <div class="info">
+                        <span>${user?.username ? `Ofisiant: ${user.username}` : ''}</span>
+                        <span>${dateStr}</span>
                     </div>
-                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tbody>
-                            ${trs}
-                        </tbody>
-                    </table>
-                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
-                    <div style="text-align: center; font-size: 10px; color: #666;">
-                        ** Nuş Olsun! **
-                    </div>
+                    <table>${headerHtml}<tbody>${trs}</tbody></table>
+                    <div class="f">Nuş Olsun!</div>
                 </div>
             `;
 
-            if (addPageBreak) {
-                return containerHTML + '\n<div style="page-break-after: always; break-after: page;"></div>\n';
-            }
             return containerHTML;
         };
 
@@ -191,13 +183,22 @@ const WaiterDashboard: React.FC = () => {
             if (doc) {
                 doc.open();
                 doc.write(`
-                    <html>
-                        <head>
-                            <title>Sifariş Çeki</title>
-                        </head>
-                        <body style="margin:0; padding:0; background:#fff;">
-                            ${fullHTML}
-                        </body>
+                    <!DOCTYPE html><html><head><title>Sifariş Çeki</title>
+                    <style>
+                    @page { size: 80mm auto; margin: 0 }
+                    * { margin: 0; padding: 0; box-sizing: border-box }
+                    body { font-family: 'Courier New', monospace; font-size: 16px; line-height: 1.5; background: #fff; margin: 0; padding: 0; }
+                    .receipt-page { width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; }
+                    .pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }
+                    h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }
+                    .info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }
+                    table { width: 100%; border-collapse: collapse; margin: 3mm 0; }
+                    td { font-size: 16px; font-weight: bold; padding: 4px 0; }
+                    .f { text-align: center; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm; margin-top: 3mm; }
+                    </style></head>
+                    <body>
+                        ${fullHTML}
+                    </body>
                     </html>
                 `);
                 doc.close();
