@@ -148,7 +148,7 @@ const CashierDashboard: React.FC = () => {
             '<div class="pub">Artıbir</div>',
             `<h3>${tableLabel}</h3>`,
             '<div class="info">',
-            waiterLabel ? `<span>Ofisiant: ${waiterLabel}</span>` : '<span></span>',
+            waiterLabel ? `<span>${waiterLabel}</span>` : '<span></span>',
             `<span>${new Date(group.latestTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
             '</div>',
             `<table>${itemsHtml}</table>`,
