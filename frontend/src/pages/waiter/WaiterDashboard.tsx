@@ -879,10 +879,10 @@ const WaiterDashboard: React.FC = () => {
                                         }
 
                                         try {
-                                            await api.post(`/waiter/table-orders/${tableNumber}/print-check`);
-                                            toast.success('Çek çap edilir');
                                             setShowOrderPopup(false);
                                             handleBackToTables();
+                                            await api.post(`/waiter/table-orders/${tableNumber}/print-check`);
+                                            toast.success('Çek çap edilir');
                                         } catch (error) {
                                             toast.error('Çek çap edilərkən xəta baş verdi');
                                         }
