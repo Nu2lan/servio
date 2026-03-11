@@ -59,6 +59,7 @@ const WaiterDashboard: React.FC = () => {
     const [pinInput, setPinInput] = useState('');
     const [deletingItem, setDeletingItem] = useState<string | null>(null);
     const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+    const [newOrderToPrint, setNewOrderToPrint] = useState<{ tableNumber: string, kitchenItems: any[], barItems: any[], createdAt: string } | null>(null);
     const [, setTick] = useState(0);
     const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -125,6 +126,65 @@ const WaiterDashboard: React.FC = () => {
         const interval = setInterval(() => setTick((t) => t + 1), 1000);
         return () => clearInterval(interval);
     }, []);
+
+    // Print Mətbəx & Bar receipts when a new order is confirmed
+    useEffect(() => {
+        if (!newOrderToPrint) return;
+
+        const { tableNumber: tNum, kitchenItems, barItems, createdAt } = newOrderToPrint;
+
+        const formatDate = (dateString: string) => {
+            const d = new Date(dateString);
+            return `${d.toLocaleDateString('az-AZ')} ${d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+        };
+
+        const generateReceiptHTML = (title: string, items: any[], addPageBreak: boolean) => {
+            if (items.length === 0) return '';
+            
+            const trs = items.map(item => `
+                <tr>
+                    <td style="padding: 4px 0;">${item.name}</td>
+                    <td style="text-align: right; font-weight: bold;">${item.quantity} }<span style="font-size: 10px; font-weight: normal;">x</span></td>
+                </tr>
+            `).join('');
+
+            return `
+                <div style="width: 100%; max-width: 300px; margin: 0 auto; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; padding: 10px; ${addPageBreak ? 'page-break-after: always;' : ''}">
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <h2 style="margin: 0; font-size: 18px; text-transform: uppercase;">${title}</h2>
+                        <div style="font-size: 12px; margin-top: 5px; color: #333;">Masa: <b>${tNum}</b></div>
+                        <div style="font-size: 10px; color: #666; margin-top: 2px;">Tarix: ${formatDate(createdAt)}</div>
+                    </div>
+                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tbody>
+                            ${trs}
+                        </tbody>
+                    </table>
+                    <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+                    <div style="text-align: center; font-size: 10px; color: #666;">
+                        ** Nuş Olsun! **
+                    </div>
+                </div>
+            `;
+        };
+
+        const kitchenHTML = generateReceiptHTML('Mətbəx', kitchenItems, barItems.length > 0);
+        const barHTML = generateReceiptHTML('Bar', barItems, false);
+        const fullHTML = kitchenHTML + barHTML;
+
+        if (fullHTML) {
+            const iframe = document.getElementById('print-frame') as HTMLIFrameElement;
+            if (iframe && iframe.contentDocument) {
+                iframe.contentDocument.body.innerHTML = fullHTML;
+                iframe.contentWindow?.print();
+            }
+        }
+
+        // Clear after printing
+        setNewOrderToPrint(null);
+
+    }, [newOrderToPrint]);
 
     useEffect(() => {
         fetchMenu();
@@ -317,11 +377,20 @@ const WaiterDashboard: React.FC = () => {
 
         setSubmitting(true);
         try {
-            await api.post('/waiter/orders', {
+            const response = await api.post('/waiter/orders', {
                 tableNumber,
                 items: cart.map((c) => ({ menuItemId: c.menuItemId, quantity: c.quantity })),
             });
+            const data = response.data;
             toast.success(`Masa ${tableNumber.includes('-') ? tableNumber.split('-').pop() : tableNumber} üçün sifariş təsdiqləndi!`);
+            
+            // Trigger printing
+            setNewOrderToPrint({
+                tableNumber,
+                kitchenItems: data.kitchenItems || [],
+                barItems: data.barItems || [],
+                createdAt: data.createdAt || new Date().toISOString()
+            });
             setCart([]);
             setTableNumber(null);
             setCartOpen(false);

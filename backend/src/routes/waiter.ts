@@ -224,7 +224,10 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
             _id: order._id,
             tableNumber: order.tableNumber,
             items: order.items.map((i) => ({ name: i.name, quantity: i.quantity })),
+            kitchenItems: kitchenItems.map((i) => ({ name: i.name, quantity: i.quantity })),
+            barItems: barItems.map((i) => ({ name: i.name, quantity: i.quantity })),
             status: order.status,
+            createdAt: (order as any).createdAt,
         });
     } catch (error) {
         console.error('Order creation error:', error);
