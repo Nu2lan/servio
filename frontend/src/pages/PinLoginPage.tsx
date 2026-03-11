@@ -55,7 +55,21 @@ const PinLoginPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-surface-950 px-4">
+        <div 
+            className="min-h-screen flex items-center justify-center bg-surface-950 px-4 outline-none"
+            tabIndex={0}
+            autoFocus
+            ref={el => el?.focus()}
+            onKeyDown={(e) => {
+                if (e.key >= '0' && e.key <= '9') {
+                    handleDigit(e.key);
+                } else if (e.key === 'Backspace') {
+                    handleBackspace();
+                } else if (e.key === 'Escape') {
+                    handleClear();
+                }
+            }}
+        >
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -right-40 w-80 h-80 bg-brand-500/10 rounded-full blur-3xl" />

@@ -296,6 +296,16 @@ const WaiterDashboard: React.FC = () => {
         }
     };
 
+
+
+    // Ensure we trigger verification as soon as length reaches 4, 
+    // outside the event listener to avoid stale closures on `handleVerifyPin`
+    useEffect(() => {
+        if (showPinModal && pinInput.length === 4) {
+            handleVerifyPin(pinInput);
+        }
+    }, [pinInput, showPinModal]);
+
     const handleVerifyPin = async (pin: string) => {
         try {
             const { data } = await api.post('/auth/verify-pin', { pin });
@@ -614,7 +624,26 @@ const WaiterDashboard: React.FC = () => {
     const previousOrdersPopup = showOrderPopup && tableOrders.length > 0 && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => { if (!showPinModal) { setShowOrderPopup(false); setShowPaymentOptions(false); setIsEditingOrder(false); } }}>
             {showPinModal ? (
-                <div className="bg-surface-800 p-6 rounded-3xl w-full max-w-sm space-y-8 shadow-2xl border border-surface-700 relative z-50" onClick={e => e.stopPropagation()}>
+                <div 
+                    tabIndex={0}
+                    autoFocus
+                    ref={el => el?.focus()}
+                    onKeyDown={(e) => {
+                        if (e.key >= '0' && e.key <= '9') {
+                            setPinInput(prev => {
+                                if (prev.length < 4) return prev + e.key;
+                                return prev;
+                            });
+                        } else if (e.key === 'Backspace') {
+                            setPinInput(prev => prev.slice(0, -1));
+                        } else if (e.key === 'Escape') {
+                            setShowPinModal(false);
+                            setPinInput('');
+                        }
+                    }}
+                    className="bg-surface-800 p-6 rounded-3xl w-full max-w-sm space-y-8 shadow-2xl border border-surface-700 relative z-50 outline-none" 
+                    onClick={e => e.stopPropagation()}
+                >
                     <div className="flex justify-between items-center">
                         <h3 className="text-xl font-bold text-surface-100">Kassir / Admin PİN</h3>
                         <button onClick={() => { setShowPinModal(false); setPinInput(''); }} className="text-surface-400 p-2 hover:bg-surface-700 rounded-full transition-colors">
