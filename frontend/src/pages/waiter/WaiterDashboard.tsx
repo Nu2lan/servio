@@ -174,10 +174,38 @@ const WaiterDashboard: React.FC = () => {
         const fullHTML = kitchenHTML + barHTML;
 
         if (fullHTML) {
-            const iframe = document.getElementById('print-frame') as HTMLIFrameElement;
-            if (iframe && iframe.contentDocument) {
-                iframe.contentDocument.body.innerHTML = fullHTML;
-                iframe.contentWindow?.print();
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.top = '-10000px';
+            iframe.style.left = '-10000px';
+            iframe.style.width = '80mm';
+            iframe.style.height = '0';
+            document.body.appendChild(iframe);
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            
+            if (doc) {
+                doc.open();
+                doc.write(`
+                    <html>
+                        <head>
+                            <title>Sifariş Çeki</title>
+                        </head>
+                        <body style="margin:0; padding:0; background:#fff;">
+                            ${fullHTML}
+                        </body>
+                    </html>
+                `);
+                doc.close();
+
+                iframe.onload = () => {
+                    setTimeout(() => {
+                        iframe.contentWindow?.print();
+                        setTimeout(() => document.body.removeChild(iframe), 500);
+                    }, 250);
+                };
+            } else {
+                // Fallback if no doc
+                document.body.removeChild(iframe);
             }
         }
 
