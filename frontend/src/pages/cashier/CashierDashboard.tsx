@@ -22,6 +22,7 @@ interface Order {
     paidAt?: string;
     createdBy?: { _id: string; username: string };
     checkPrinted?: boolean;
+    paymentMethod?: 'cash' | 'card';
 }
 
 interface Hall {
@@ -50,6 +51,8 @@ const CashierDashboard: React.FC = () => {
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
     const [halls, setHalls] = useState<Hall[]>([]);
     const [activeTab, setActiveTab] = useState<string>('all');
+    const [showEndOfDayModal, setShowEndOfDayModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState<{isOpen: boolean, orderIds: string[]}>({ isOpen: false, orderIds: [] });
 
 
     useEffect(() => {
@@ -123,7 +126,13 @@ const CashierDashboard: React.FC = () => {
         return halls.some(h => h.type === 'cabinet' && h.name === order.tableNumber);
     };
 
-    const handlePrintEndOfDay = () => {
+    const getDisplayStatus = (status: string): string => {
+        if (status === 'confirmed') return 'Gözləyir';
+        if (status === 'paid') return 'Ödənilib';
+        return status;
+    };
+
+    const handlePrintEndOfDay = async () => {
         const paidOrders = orders.filter(o => o.status === 'paid');
         if (paidOrders.length === 0) {
             toast.error('Günün sonu hesabatı üçün ödənilmiş sifariş yoxdur');
@@ -131,7 +140,8 @@ const CashierDashboard: React.FC = () => {
         }
 
         const merged = new Map<string, { qty: number; price: number }>();
-        let totalIncome = 0;
+        let cashIncome = 0;
+        let cardIncome = 0;
 
         for (const order of paidOrders) {
             for (const item of order.items) {
@@ -142,8 +152,13 @@ const CashierDashboard: React.FC = () => {
                     merged.set(item.name, { qty: item.quantity, price: item.price });
                 }
             }
-            totalIncome += order.totalPrice;
+            if (order.paymentMethod === 'card') {
+                cardIncome += order.totalPrice;
+            } else {
+                cashIncome += order.totalPrice;
+            }
         }
+        const totalIncome = cashIncome + cardIncome;
 
         const itemsList = Array.from(merged.entries()).map(([name, { qty, price }]) =>
             `<tr><td>${name}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${(price * qty).toFixed(2)}</td></tr>`
@@ -174,6 +189,10 @@ const CashierDashboard: React.FC = () => {
             `<span>${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
             '</div>',
             `<table>${itemsHtml}</table>`,
+            `<div class="t" style="text-align: left; font-size: 16px;">`,
+            `Nağd Ödəniş: <span style="float: right">${cashIncome.toFixed(2)} AZN</span><br>`,
+            `Kartla Ödəniş: <span style="float: right">${cardIncome.toFixed(2)} AZN</span>`,
+            `</div>`,
             `<div class="t">Cəmi: ${totalIncome.toFixed(2)} AZN</div>`,
             '<div class="f">Təşəkkürlər</div>',
             '</body></html>',
@@ -198,6 +217,14 @@ const CashierDashboard: React.FC = () => {
                     document.body.removeChild(iframe);
                 }, 500);
             }, 250);
+        }
+
+        try {
+            await api.delete('/cashier/orders/end-of-day');
+            setOrders(prev => prev.filter(o => o.status !== 'paid'));
+            toast.success('Gün sonu hesabatı çap edildi və məlumatlar sıfırlandı');
+        } catch {
+            toast.error('Gün sonunu sıfırlamaq mümkün olmadı');
         }
     };
 
@@ -280,9 +307,9 @@ const CashierDashboard: React.FC = () => {
         }
     };
 
-    const togglePayGroup = async (orderIds: string[]) => {
+    const togglePayGroup = async (orderIds: string[], method: 'cash' | 'card') => {
         try {
-            const { data } = await api.patch('/cashier/orders/pay-batch', { orderIds });
+            const { data } = await api.patch('/cashier/orders/pay-batch', { orderIds, paymentMethod: method });
             const updatedMap = new Map(data.map((o: Order) => [o._id, o]));
             setOrders((prev) =>
                 prev.map((o) => (updatedMap.has(o._id) ? (updatedMap.get(o._id) as Order) : o))
@@ -461,7 +488,7 @@ const CashierDashboard: React.FC = () => {
                                 {viewMode === 'list' ? <HiOutlineViewGrid className="w-5 h-5" /> : <HiOutlineViewList className="w-5 h-5" />}
                             </button>
                             <button
-                                onClick={handlePrintEndOfDay}
+                                onClick={() => setShowEndOfDayModal(true)}
                                 className="px-3 py-1.5 rounded-xl bg-surface-800 text-brand-400 border border-brand-500/30 hover:bg-brand-500 hover:text-white hover:border-brand-500 transition-all flex items-center gap-1.5 text-sm font-semibold whitespace-nowrap"
                             >
                                 <HiOutlineDocumentText className="w-4 h-4" />
@@ -507,7 +534,7 @@ const CashierDashboard: React.FC = () => {
                                         ? 'bg-emerald-500/20 text-emerald-400'
                                         : 'bg-brand-500/20 text-brand-400'
                                         }`}>
-                                        {group.status}
+                                        {getDisplayStatus(group.status)}
                                     </span>
                                 </div>
 
@@ -540,22 +567,18 @@ const CashierDashboard: React.FC = () => {
                                             {group.checkPrinted ? 'Çap edilib' : 'Çap et'}
                                         </button>
                                     )}
-                                    <button
-                                        onClick={() => togglePayGroup(group.orderIds)}
-                                        disabled={group.status !== 'paid' && !group.checkPrinted}
-                                        className={`${group.status === 'paid' ? 'w-full' : 'w-1/2'} py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${group.status === 'paid'
-                                            ? 'bg-surface-700 text-surface-300 hover:bg-surface-600'
-                                            : !group.checkPrinted
-                                                ? 'bg-emerald-500/30 text-emerald-300/50 cursor-not-allowed'
-                                                : 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                            }`}
-                                    >
-                                        {group.status === 'paid' ? (
-                                            <><HiOutlineCash className="w-3.5 h-3.5" /> Ödənilməyib</>
-                                        ) : (
-                                            <><HiOutlineCheck className="w-3.5 h-3.5" /> Ödənilib</>
-                                        )}
-                                    </button>
+                                    {group.status !== 'paid' && (
+                                        <button
+                                            onClick={() => setShowPaymentModal({ isOpen: true, orderIds: group.orderIds })}
+                                            disabled={!group.checkPrinted}
+                                            className={`w-1/2 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${!group.checkPrinted
+                                                    ? 'bg-emerald-500/30 text-emerald-300/50 cursor-not-allowed'
+                                                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                                }`}
+                                        >
+                                            <HiOutlineCheck className="w-3.5 h-3.5" /> Ödənilib
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -586,7 +609,7 @@ const CashierDashboard: React.FC = () => {
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className={group.status === 'paid' ? 'badge-paid' : 'badge-confirmed'}>
-                                            {group.status}
+                                            {getDisplayStatus(group.status)}
                                         </span>
                                     </div>
                                 </div>
@@ -640,34 +663,90 @@ const CashierDashboard: React.FC = () => {
                                             {group.checkPrinted ? 'Çap edilib ✓' : 'Çək çap et'}
                                         </button>
                                     )}
-                                    <button
-                                        onClick={() => togglePayGroup(group.orderIds)}
-                                        disabled={group.status !== 'paid' && !group.checkPrinted}
-                                        className={`${group.status === 'paid' ? 'w-full' : 'w-1/2'} py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${group.status === 'paid'
-                                            ? 'bg-surface-700 text-surface-300 hover:bg-surface-600'
-                                            : !group.checkPrinted
-                                                ? 'bg-emerald-500/30 text-emerald-300/50 cursor-not-allowed'
-                                                : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/25'
-                                            }`}
-                                    >
-                                        {group.status === 'paid' ? (
-                                            <>
-                                                <HiOutlineCash className="w-4 h-4" />
-                                                Ödənilmədi kimi işarələ
-                                            </>
-                                        ) : (
-                                            <>
-                                                <HiOutlineCheck className="w-4 h-4" />
-                                                Ödənildi kimi işarələ
-                                            </>
-                                        )}
-                                    </button>
+                                    {group.status !== 'paid' && (
+                                        <button
+                                            onClick={() => setShowPaymentModal({ isOpen: true, orderIds: group.orderIds })}
+                                            disabled={!group.checkPrinted}
+                                            className={`w-1/2 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${!group.checkPrinted
+                                                    ? 'bg-emerald-500/30 text-emerald-300/50 cursor-not-allowed'
+                                                    : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/25'
+                                                }`}
+                                        >
+                                            <HiOutlineCheck className="w-4 h-4" />
+                                            Ödənildi
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            {/* End of Day Confirmation Modal */}
+            {showEndOfDayModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => setShowEndOfDayModal(false)}>
+                    <div className="bg-surface-800 p-6 sm:p-8 rounded-3xl w-full max-w-sm space-y-6 shadow-2xl border border-surface-700 relative text-center animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="w-16 h-16 bg-brand-500/20 text-brand-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <HiOutlineDocumentText className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-xl font-bold text-surface-100">Gün sonu</h3>
+                        <p className="text-surface-300 text-lg relative z-[100] selection:bg-brand-500/30">Təsdiq etmək istəyirsinizmi?</p>
+
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => {
+                                    setShowEndOfDayModal(false);
+                                    handlePrintEndOfDay();
+                                }}
+                                className="flex-1 py-3 rounded-xl bg-brand-500 text-white font-semibold hover:bg-brand-600 active:scale-95 shadow-lg shadow-brand-500/25 transition-all outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-surface-800"
+                            >
+                                Bəli
+                            </button>
+                            <button
+                                onClick={() => setShowEndOfDayModal(false)}
+                                className="flex-1 py-3 rounded-xl bg-surface-700 text-surface-300 font-semibold hover:bg-surface-600 active:scale-95 transition-all outline-none focus:ring-2 focus:ring-surface-500"
+                            >
+                                Xeyr
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Payment Method Selection Modal */}
+            {showPaymentModal.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => setShowPaymentModal({ isOpen: false, orderIds: [] })}>
+                    <div className="bg-surface-800 p-6 sm:p-8 rounded-3xl w-full max-w-sm space-y-6 shadow-2xl border border-surface-700 relative text-center animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="w-16 h-16 bg-brand-500/20 text-brand-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <HiOutlineCash className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-xl font-bold text-surface-100">Ödəniş növü</h3>
+                        <p className="text-surface-300 text-lg relative z-[100] selection:bg-brand-500/30">Zəhmət olmasa ödəniş növünü seçin</p>
+
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => {
+                                    setShowPaymentModal({ isOpen: false, orderIds: [] });
+                                    togglePayGroup(showPaymentModal.orderIds, 'cash');
+                                }}
+                                className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 active:scale-95 shadow-lg shadow-emerald-500/25 transition-all outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-surface-800"
+                            >
+                                Nağd Ödəniş
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowPaymentModal({ isOpen: false, orderIds: [] });
+                                    togglePayGroup(showPaymentModal.orderIds, 'card');
+                                }}
+                                className="flex-1 py-3 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-600 active:scale-95 shadow-lg shadow-blue-500/25 transition-all outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-surface-800"
+                            >
+                                Kartla Ödəniş
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 };
