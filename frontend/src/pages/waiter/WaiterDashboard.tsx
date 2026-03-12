@@ -589,8 +589,8 @@ const WaiterDashboard: React.FC = () => {
                         >
                             {(() => {
                                 const merged = new Map<string, number>();
-                                for (const order of tableOrders) {
-                                    for (const item of order.items) {
+                                for (let i = tableOrders.length - 1; i >= 0; i--) {
+                                    for (const item of tableOrders[i].items) {
                                         merged.set(item.name, (merged.get(item.name) || 0) + item.quantity);
                                     }
                                 }
@@ -697,8 +697,8 @@ const WaiterDashboard: React.FC = () => {
                     <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-2">
                         {(() => {
                             const merged = new Map<string, { qty: number; price: number }>();
-                            for (const order of tableOrders) {
-                                for (const item of order.items) {
+                            for (let i = tableOrders.length - 1; i >= 0; i--) {
+                                for (const item of tableOrders[i].items) {
                                     const existing = merged.get(item.name);
                                     if (existing) {
                                         existing.qty += item.quantity;
