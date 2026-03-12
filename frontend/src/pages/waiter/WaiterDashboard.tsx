@@ -588,16 +588,21 @@ const WaiterDashboard: React.FC = () => {
                             className="bg-surface-800/60 rounded-xl p-3 space-y-1.5 cursor-pointer hover:bg-surface-700/60 transition-all active:scale-[0.98]"
                         >
                             {(() => {
-                                const merged = new Map<string, number>();
+                                const merged: { name: string; qty: number }[] = [];
                                 for (let i = tableOrders.length - 1; i >= 0; i--) {
                                     for (const item of tableOrders[i].items) {
-                                        merged.set(item.name, (merged.get(item.name) || 0) + item.quantity);
+                                        const existing = merged.find(m => m.name === item.name);
+                                        if (existing) {
+                                            existing.qty += item.quantity;
+                                        } else {
+                                            merged.push({ name: item.name, qty: item.quantity });
+                                        }
                                     }
                                 }
-                                return Array.from(merged.entries()).map(([name, qty]) => (
-                                    <div key={name} className="flex items-center justify-between">
-                                        <span className="text-sm text-surface-300">{name}</span>
-                                        <span className="text-xs font-semibold text-surface-400">×{qty}</span>
+                                return merged.map((m) => (
+                                    <div key={m.name} className="flex items-center justify-between">
+                                        <span className="text-sm text-surface-300">{m.name}</span>
+                                        <span className="text-xs font-semibold text-surface-400">×{m.qty}</span>
                                     </div>
                                 ));
                             })()}
@@ -622,7 +627,16 @@ const WaiterDashboard: React.FC = () => {
 
     // ─── Previous Orders Popup (portal to body for full-screen overlay) ───
     const previousOrdersPopup = showOrderPopup && tableOrders.length > 0 && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => { if (!showPinModal) { setShowOrderPopup(false); setShowPaymentOptions(false); setIsEditingOrder(false); } }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => { 
+            if (showPinModal) return;
+            if (deletedItemsToPrint.length > 0) {
+                toast.error('Zəhmət olmasa ləğv çekini çap etmək üçün "Bitdi" düyməsini basın.');
+                return;
+            }
+            setShowOrderPopup(false); 
+            setShowPaymentOptions(false); 
+            setIsEditingOrder(false); 
+        }}>
             {showPinModal ? (
                 <div 
                     tabIndex={0}
@@ -689,46 +703,52 @@ const WaiterDashboard: React.FC = () => {
                             Masa {tableNumber?.includes('-') ? tableNumber.split('-').pop() : tableNumber}
                             {isEditingOrder && <span className="text-xs sm:text-sm bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/20 ml-2">Redaktə Rejimi</span>}
                         </h3>
-                        <button onClick={() => { setShowOrderPopup(false); setIsEditingOrder(false); }} className="text-surface-400 hover:text-white bg-surface-800 p-2.5 rounded-full hover:bg-red-500 transition-all">
+                        <button onClick={() => { 
+                            if (deletedItemsToPrint.length > 0) {
+                                toast.error('Zəhmət olmasa ləğv çekini çap etmək üçün "Bitdi" düyməsini basın.');
+                                return;
+                            }
+                            setShowOrderPopup(false); 
+                            setIsEditingOrder(false); 
+                        }} className="text-surface-400 hover:text-white bg-surface-800 p-2.5 rounded-full hover:bg-red-500 transition-all">
                             <HiOutlineX className="w-6 h-6" />
                         </button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-2">
                         {(() => {
-                            const merged = new Map<string, { qty: number; price: number }>();
+                            const merged: { name: string; qty: number; price: number }[] = [];
                             for (let i = tableOrders.length - 1; i >= 0; i--) {
                                 for (const item of tableOrders[i].items) {
-                                    const existing = merged.get(item.name);
+                                    const existing = merged.find(m => m.name === item.name);
                                     if (existing) {
                                         existing.qty += item.quantity;
                                     } else {
-                                        merged.set(item.name, { qty: item.quantity, price: item.price });
+                                        merged.push({ name: item.name, qty: item.quantity, price: item.price });
                                     }
                                 }
                             }
-                            const entries = Array.from(merged.entries());
-                            const total = entries.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
+                            const total = merged.reduce((sum, v) => sum + v.price * v.qty, 0);
                             return (
                                 <>
-                                    {entries.map(([name, { qty, price }]) => (
-                                        <div key={name} className="flex items-center justify-between py-3 border-b border-surface-800 last:border-0 group">
+                                    {merged.map((m) => (
+                                        <div key={m.name} className="flex items-center justify-between py-3 border-b border-surface-800 last:border-0 group">
                                             <div className="flex flex-col">
-                                                <span className="text-base sm:text-lg font-medium text-surface-200">{name}</span>
-                                                <span className="text-sm text-surface-500">{price.toFixed(2)} AZN</span>
+                                                <span className="text-base sm:text-lg font-medium text-surface-200">{m.name}</span>
+                                                <span className="text-sm text-surface-500">{m.price.toFixed(2)} AZN</span>
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <div className="text-right">
-                                                    <div className="text-lg font-bold text-surface-100">×{qty}</div>
-                                                    <div className="text-sm font-semibold text-brand-400">{(price * qty).toFixed(2)} AZN</div>
+                                                    <div className="text-lg font-bold text-surface-100">×{m.qty}</div>
+                                                    <div className="text-sm font-semibold text-brand-400">{(m.price * m.qty).toFixed(2)} AZN</div>
                                                 </div>
                                                 {isEditingOrder && (
                                                     <button
-                                                        onClick={() => handleDeleteOrderItem(name)}
-                                                        disabled={deletingItem === name}
+                                                        onClick={() => handleDeleteOrderItem(m.name)}
+                                                        disabled={deletingItem === m.name}
                                                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shrink-0"
                                                     >
-                                                        {deletingItem === name ? (
+                                                        {deletingItem === m.name ? (
                                                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                                         ) : (
                                                             <HiOutlineMinus className="w-5 h-5" />
@@ -757,8 +777,19 @@ const WaiterDashboard: React.FC = () => {
                                         const hallName = tableNumber?.includes('-') ? tableNumber.substring(0, tableNumber.lastIndexOf('-')) : activeHall;
                                         const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
 
+                                        const mergedDeletedItems = deletedItemsToPrint.reduce((acc, curr) => {
+                                            const existing = acc.find(item => item.name === curr.name);
+                                            if (existing) {
+                                                existing.qty += 1;
+                                                existing.totalPrice += curr.price;
+                                            } else {
+                                                acc.push({ name: curr.name, qty: 1, price: curr.price, totalPrice: curr.price });
+                                            }
+                                            return acc;
+                                        }, [] as { name: string; qty: number; price: number, totalPrice: number }[]);
+
                                         const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' +
-                                            deletedItemsToPrint.map(item => `<tr><td style="color:red; text-decoration:line-through; font-style:italic">Ləğv: ${item.name}</td><td style="text-align:center">-1</td><td style="text-align:right">-${item.price.toFixed(2)}</td></tr>`).join('') + '</tbody>';
+                                            mergedDeletedItems.map(item => `<tr><td style="color:red; text-decoration:line-through; font-style:italic">Ləğv: ${item.name}</td><td style="text-align:center">-${item.qty}</td><td style="text-align:right">-${item.totalPrice.toFixed(2)}</td></tr>`).join('') + '</tbody>';
 
                                         const totalDeletedPrice = deletedItemsToPrint.reduce((sum, item) => sum + item.price, 0);
 
