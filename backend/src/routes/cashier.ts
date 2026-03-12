@@ -75,7 +75,7 @@ router.patch('/orders/:id/pay', async (req: AuthRequest, res: Response): Promise
 // PATCH /api/cashier/orders/pay-batch — mark multiple orders as paid at once
 router.patch('/orders/pay-batch', async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { orderIds } = req.body;
+        const { orderIds, paymentMethod } = req.body;
         if (!Array.isArray(orderIds) || orderIds.length === 0) {
             res.status(400).json({ message: 'orderIds massivi tələb olunur.' });
             return;
@@ -84,11 +84,11 @@ router.patch('/orders/pay-batch', async (req: AuthRequest, res: Response): Promi
         const now = new Date();
         await Order.updateMany(
             { _id: { $in: orderIds }, status: 'confirmed' },
-            { $set: { status: 'paid', paidAt: now } }
+            { $set: { status: 'paid', paidAt: now, paymentMethod: paymentMethod || 'cash' } }
         );
 
         const updatedOrders = await Order.find({ _id: { $in: orderIds } })
-            .select('tableNumber items.name items.quantity items.price totalPrice status paidAt createdBy checkPrinted')
+            .select('tableNumber items.name items.quantity items.price totalPrice status paidAt createdBy checkPrinted paymentMethod')
             .populate('createdBy', 'username');
 
         const io = getIO();
@@ -125,6 +125,16 @@ router.patch('/orders/print-check', async (req: AuthRequest, res: Response): Pro
             { $set: { checkPrinted: true } }
         );
         res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ message: 'Server xətası.' });
+    }
+});
+
+// DELETE /api/cashier/orders/end-of-day — delete all paid orders
+router.delete('/orders/end-of-day', async (_req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        await Order.deleteMany({ status: 'paid' });
+        res.json({ success: true, message: 'Gün sonu resetləndi.' });
     } catch (error) {
         res.status(500).json({ message: 'Server xətası.' });
     }
