@@ -130,11 +130,11 @@ router.patch('/orders/print-check', async (req: AuthRequest, res: Response): Pro
     }
 });
 
-// DELETE /api/cashier/orders/end-of-day — delete all paid orders
-router.delete('/orders/end-of-day', async (_req: AuthRequest, res: Response): Promise<void> => {
+// PATCH /api/cashier/orders/end-of-day — archive all paid orders
+router.patch('/orders/end-of-day', async (_req: AuthRequest, res: Response): Promise<void> => {
     try {
-        await Order.deleteMany({ status: 'paid' });
-        res.json({ success: true, message: 'Gün sonu resetləndi.' });
+        await Order.updateMany({ status: 'paid' }, { $set: { status: 'archived' } });
+        res.json({ success: true, message: 'Gün sonu resetləndi (arxvləndi).' });
     } catch (error) {
         res.status(500).json({ message: 'Server xətası.' });
     }

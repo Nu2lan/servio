@@ -220,7 +220,7 @@ const CashierDashboard: React.FC = () => {
         }
 
         try {
-            await api.delete('/cashier/orders/end-of-day');
+            await api.patch('/cashier/orders/end-of-day');
             setOrders(prev => prev.filter(o => o.status !== 'paid'));
             toast.success('Gün sonu hesabatı çap edildi və məlumatlar sıfırlandı');
         } catch {
