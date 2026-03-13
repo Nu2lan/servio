@@ -47,12 +47,12 @@ const CashierDashboard: React.FC = () => {
     const { user } = useAuth();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'confirmed' | 'paid'>('all');
+    const [filter, setFilter] = useState<'all' | 'confirmed' | 'paid'>('paid');
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
     const [halls, setHalls] = useState<Hall[]>([]);
     const [activeTab, setActiveTab] = useState<string>('all');
     const [showEndOfDayModal, setShowEndOfDayModal] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState<{isOpen: boolean, orderIds: string[]}>({ isOpen: false, orderIds: [] });
+    const [showPaymentModal, setShowPaymentModal] = useState<{ isOpen: boolean, orderIds: string[] }>({ isOpen: false, orderIds: [] });
 
 
     useEffect(() => {
@@ -165,7 +165,7 @@ const CashierDashboard: React.FC = () => {
         ).join('');
 
         const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' + itemsList + '</tbody>';
-        
+
         const cashierName = user?.username || '';
         const receiptHtml = [
             '<!DOCTYPE html><html><head><title>Gün Sonu Check</title>',
@@ -572,8 +572,8 @@ const CashierDashboard: React.FC = () => {
                                             onClick={() => setShowPaymentModal({ isOpen: true, orderIds: group.orderIds })}
                                             disabled={!group.checkPrinted}
                                             className={`w-1/2 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${!group.checkPrinted
-                                                    ? 'bg-emerald-500/30 text-emerald-300/50 cursor-not-allowed'
-                                                    : 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                                ? 'bg-emerald-500/30 text-emerald-300/50 cursor-not-allowed'
+                                                : 'bg-emerald-500 text-white hover:bg-emerald-600'
                                                 }`}
                                         >
                                             <HiOutlineCheck className="w-3.5 h-3.5" /> Ödənilib
@@ -668,8 +668,8 @@ const CashierDashboard: React.FC = () => {
                                             onClick={() => setShowPaymentModal({ isOpen: true, orderIds: group.orderIds })}
                                             disabled={!group.checkPrinted}
                                             className={`w-1/2 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${!group.checkPrinted
-                                                    ? 'bg-emerald-500/30 text-emerald-300/50 cursor-not-allowed'
-                                                    : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/25'
+                                                ? 'bg-emerald-500/30 text-emerald-300/50 cursor-not-allowed'
+                                                : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/25'
                                                 }`}
                                         >
                                             <HiOutlineCheck className="w-4 h-4" />
