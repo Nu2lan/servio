@@ -1,8 +1,8 @@
 import { Router, Response } from 'express';
 import Order from '../models/Order';
-import Settings from '../models/Settings';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { getIO } from '../socket';
+import { buildCategoryRoleMap, getItemRole } from '../utils/categoryRole';
 
 const router = Router();
 
@@ -14,40 +14,17 @@ router.get('/orders', async (req: AuthRequest, res: Response): Promise<void> => 
     try {
         const userRole = req.user!.role; // 'kitchen' or 'bar'
 
-        // Build category-role map from settings (case-insensitive)
-        const settings = await Settings.findOne();
-        const categoryRoles: Record<string, string> = {};
-        if (settings) {
-            for (const cat of settings.categories) {
-                if (cat.name) {
-                    categoryRoles[cat.name.trim().toLowerCase()] = cat.role || 'kitchen';
-                }
-            }
-        }
+        const categoryRoles = await buildCategoryRoleMap();
 
         const orders = await Order.find({ status: 'confirmed' })
             .select('tableNumber items.name items.quantity items.category items.prepared status createdAt')
             .sort({ createdAt: -1 });
 
-        // Filter items by role with robust fallback
+        // Filter items by role
         const filtered = orders
             .map((order) => {
                 const roleItems = order.items.filter((i) => {
-                    const categoryLower = (i.category || '').trim().toLowerCase();
-
-                    // 1. Try exact map match
-                    let itemRole = categoryRoles[categoryLower];
-
-                    // 2. Fallback: Check keywords if not found in map
-                    if (!itemRole) {
-                        if (['drink', 'beer', 'wine', 'alcohol', 'cocktail', 'juice', 'water', 'soda', 'tea', 'coffee'].some(k => categoryLower.includes(k))) {
-                            itemRole = 'bar';
-                        } else {
-                            itemRole = 'kitchen'; // Default
-                        }
-                    }
-
-                    return itemRole === userRole;
+                    return getItemRole(i.category, categoryRoles) === userRole;
                 });
                 return {
                     _id: order._id,

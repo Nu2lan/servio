@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import User from '../models/User';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { generateAuthResponse } from '../utils/authHelpers';
 
 const router = Router();
 
@@ -27,20 +27,7 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
             return;
         }
 
-        const token = jwt.sign(
-            { id: user._id, username: user.username, role: user.role },
-            process.env.JWT_SECRET || 'fallback-secret',
-            { expiresIn: '12h' }
-        );
-
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                username: user.username,
-                role: user.role,
-            },
-        });
+        res.json(generateAuthResponse(user));
     } catch (error) {
         res.status(500).json({ message: 'Server xətası.' });
     }
@@ -62,20 +49,7 @@ router.post('/pin-login', async (req: AuthRequest, res: Response): Promise<void>
             return;
         }
 
-        const token = jwt.sign(
-            { id: user._id, username: user.username, role: user.role },
-            process.env.JWT_SECRET || 'fallback-secret',
-            { expiresIn: '12h' }
-        );
-
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                username: user.username,
-                role: user.role,
-            },
-        });
+        res.json(generateAuthResponse(user));
     } catch (error) {
         res.status(500).json({ message: 'Server xətası.' });
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import { getSocket } from '../../lib/socket';
+import { buildCheckReceiptHtml, printViaIframe } from '../../lib/printReceipt';
 import toast from 'react-hot-toast';
 import { HiOutlineCash, HiOutlineCheck, HiOutlineViewGrid, HiOutlineViewList, HiOutlinePrinter, HiOutlineDocumentText } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
@@ -158,66 +159,17 @@ const CashierDashboard: React.FC = () => {
                 cashIncome += order.totalPrice;
             }
         }
-        const totalIncome = cashIncome + cardIncome;
 
-        const itemsList = Array.from(merged.entries()).map(([name, { qty, price }]) =>
-            `<tr><td>${name}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${(price * qty).toFixed(2)}</td></tr>`
-        ).join('');
-
-        const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' + itemsList + '</tbody>';
-
-        const cashierName = user?.username || '';
-        const receiptHtml = [
-            '<!DOCTYPE html><html><head><title>Gün Sonu Check</title>',
-            '<style>',
-            '@page { size: 80mm auto; margin: 0 }',
-            '* { margin: 0; padding: 0; box-sizing: border-box }',
-            "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
-            '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
-            'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
-            '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
-            'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
-            'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
-            '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right; color: #000; }',
-            '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
-            '</style></head>',
-            '<body>',
-            '<div class="pub">Artıbir</div>',
-            `<h3>Gün sonu</h3>`,
-            '<div class="info">',
-            cashierName ? `<span>${cashierName}</span>` : '<span></span>',
-            `<span>${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
-            '</div>',
-            `<table>${itemsHtml}</table>`,
-            `<div class="t" style="text-align: left; font-size: 16px;">`,
-            `Nağd Ödəniş: <span style="float: right">${cashIncome.toFixed(2)} AZN</span><br>`,
-            `Kartla Ödəniş: <span style="float: right">${cardIncome.toFixed(2)} AZN</span>`,
-            `</div>`,
-            `<div class="t">Cəmi: ${totalIncome.toFixed(2)} AZN</div>`,
-            '<div class="f">Təşəkkürlər</div>',
-            '</body></html>',
-        ].join('');
-
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.top = '-10000px';
-        iframe.style.left = '-10000px';
-        iframe.style.width = '80mm';
-        iframe.style.height = '0';
-        document.body.appendChild(iframe);
-
-        const doc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (doc) {
-            doc.open();
-            doc.write(receiptHtml);
-            doc.close();
-            setTimeout(() => {
-                iframe.contentWindow?.print();
-                setTimeout(() => {
-                    document.body.removeChild(iframe);
-                }, 500);
-            }, 250);
-        }
+        const items = Array.from(merged.entries()).map(([name, { qty, price }]) => ({ name, qty, price }));
+        const receiptHtml = buildCheckReceiptHtml({
+            subtitle: 'Gün sonu',
+            staffLabel: user?.username,
+            time: `${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`,
+            items,
+            cashIncome,
+            cardIncome,
+        });
+        printViaIframe(receiptHtml);
 
         try {
             await api.patch('/cashier/orders/end-of-day');
@@ -233,58 +185,16 @@ const CashierDashboard: React.FC = () => {
         const displayNum = getDisplayTableNumber(group.tableNumber);
         const hallName = getOrderHall({ tableNumber: group.tableNumber } as Order);
         const tableLabel = isCabinet ? group.tableNumber : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
-        const itemsList = group.items.map(item =>
-            `<tr><td>${item.name}</td><td style="text-align:center">${item.quantity}</td><td style="text-align:right">${(item.price * item.quantity).toFixed(2)}</td></tr>`
-        ).join('');
-        const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' + itemsList + '</tbody>';
         const waiterLabel = group.waiterNames.length > 0 ? group.waiterNames.join(', ') : '';
-        const receiptHtml = [
-            '<!DOCTYPE html><html><head><title>Check</title>',
-            '<style>',
-            '@page { size: 80mm auto; margin: 0 }',
-            '* { margin: 0; padding: 0; box-sizing: border-box }',
-            "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
-            '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
-            'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
-            '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
-            'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
-            'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
-            '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right }',
-            '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
-            '</style></head>',
-            '<body>',
-            '<div class="pub">Artıbir</div>',
-            `<h3>${tableLabel}</h3>`,
-            '<div class="info">',
-            waiterLabel ? `<span>${waiterLabel}</span>` : '<span></span>',
-            `<span>${new Date(group.latestTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
-            '</div>',
-            `<table>${itemsHtml}</table>`,
-            `<div class="t">Cəmi: ${group.totalPrice.toFixed(2)} AZN</div>`,
-            '<div class="f">Təşəkkürlər</div>',
-            '</body></html>',
-        ].join('');
 
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.top = '-10000px';
-        iframe.style.left = '-10000px';
-        iframe.style.width = '80mm';
-        iframe.style.height = '0';
-        document.body.appendChild(iframe);
-
-        const doc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (doc) {
-            doc.open();
-            doc.write(receiptHtml);
-            doc.close();
-            setTimeout(() => {
-                iframe.contentWindow?.print();
-                setTimeout(() => {
-                    document.body.removeChild(iframe);
-                }, 500);
-            }, 250);
-        }
+        const receiptHtml = buildCheckReceiptHtml({
+            subtitle: tableLabel,
+            staffLabel: waiterLabel,
+            time: new Date(group.latestTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+            items: group.items.map(item => ({ name: item.name, qty: item.quantity, price: item.price })),
+            total: group.totalPrice,
+        });
+        printViaIframe(receiptHtml);
 
         try {
             await api.patch('/cashier/orders/print-check', { orderIds: group.orderIds });

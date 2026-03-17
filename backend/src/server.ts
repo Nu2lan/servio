@@ -10,6 +10,7 @@ import mongoose from 'mongoose';
 
 import { initSocket } from './socket';
 import { seedDefaultUsers } from './seed';
+import { runMigrations } from './migrations';
 import Settings from './models/Settings';
 
 import authRoutes from './routes/auth';
@@ -90,70 +91,7 @@ mongoose
     .then(async () => {
         console.log('📦 Connected to MongoDB');
         await seedDefaultUsers();
-
-        // Migrate old string categories to { name, role } format
-        const settingsCollection = mongoose.connection.db!.collection('settings');
-        const rawSettings = await settingsCollection.findOne({});
-        if (rawSettings && rawSettings.categories && rawSettings.categories.length > 0) {
-            const first = rawSettings.categories[0];
-            if (typeof first === 'string') {
-                console.log('📋 Migrating categories to new format...');
-                const barKeywords = ['drink', 'cocktail', 'beer', 'alcohol', 'siqaret', 'wine', 'whiskey', 'liquor', 'tequilla', 'shot'];
-                const migrated = rawSettings.categories.map((c: string) => ({
-                    name: c,
-                    role: barKeywords.some((k) => c.toLowerCase().includes(k)) ? 'bar' : 'kitchen',
-                }));
-                await settingsCollection.updateOne({ _id: rawSettings._id }, { $set: { categories: migrated } });
-                console.log('✅ Categories migrated');
-            }
-        }
-
-        // Migrate tableNumber from number to string in orders
-        const ordersCollection = mongoose.connection.db!.collection('orders');
-        const numericOrders = await ordersCollection.countDocuments({ tableNumber: { $type: 'number' } });
-        if (numericOrders > 0) {
-            console.log(`📋 Migrating ${numericOrders} orders: tableNumber number → string...`);
-            const cursor = ordersCollection.find({ tableNumber: { $type: 'number' } });
-            for await (const doc of cursor) {
-                await ordersCollection.updateOne(
-                    { _id: doc._id },
-                    { $set: { tableNumber: String(doc.tableNumber) } }
-                );
-            }
-            console.log('✅ Orders tableNumber migrated');
-        }
-
-        // Migrate tableNumber from number to string in inventorylogs
-        const logsCollection = mongoose.connection.db!.collection('inventorylogs');
-        const numericLogs = await logsCollection.countDocuments({ tableNumber: { $type: 'number' } });
-        if (numericLogs > 0) {
-            console.log(`📋 Migrating ${numericLogs} inventory logs: tableNumber number → string...`);
-            const logCursor = logsCollection.find({ tableNumber: { $type: 'number' } });
-            for await (const doc of logCursor) {
-                await logsCollection.updateOne(
-                    { _id: doc._id },
-                    { $set: { tableNumber: String(doc.tableNumber) } }
-                );
-            }
-            console.log('✅ InventoryLogs tableNumber migrated');
-        }
-
-        // Migrate halls: add type:'hall' where missing
-        if (rawSettings && rawSettings.halls && rawSettings.halls.length > 0) {
-            const needsMigration = rawSettings.halls.some((h: any) => !h.type);
-            if (needsMigration) {
-                console.log('📋 Migrating halls: adding type field...');
-                const migratedHalls = rawSettings.halls.map((h: any) => ({
-                    ...h,
-                    type: h.type || 'hall',
-                }));
-                await settingsCollection.updateOne(
-                    { _id: rawSettings._id },
-                    { $set: { halls: migratedHalls } }
-                );
-                console.log('✅ Halls type field migrated');
-            }
-        }
+        await runMigrations();
     })
     .catch((err) => {
         console.error('❌ MongoDB connection error:', err);

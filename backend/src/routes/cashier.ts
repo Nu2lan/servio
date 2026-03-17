@@ -12,7 +12,7 @@ router.use(authenticate, authorize('cashier'));
 router.get('/orders', async (_req: AuthRequest, res: Response): Promise<void> => {
     try {
         const orders = await Order.find()
-            .select('tableNumber items.name items.quantity items.price totalPrice status createdAt paidAt createdBy checkPrinted')
+            .select('tableNumber items.name items.quantity items.price totalPrice status createdAt paidAt createdBy checkPrinted paymentMethod')
             .populate('createdBy', 'username')
             .sort({ createdAt: -1 });
 

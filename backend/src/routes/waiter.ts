@@ -3,10 +3,10 @@ import MenuItem from '../models/MenuItem';
 import Inventory from '../models/Inventory';
 import InventoryLog from '../models/InventoryLog';
 import Order from '../models/Order';
-import Settings from '../models/Settings';
 import User from '../models/User';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { getIO } from '../socket';
+import { buildCategoryRoleMap, getItemRole } from '../utils/categoryRole';
 
 const router = Router();
 
@@ -136,34 +136,12 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
             io.to('admin').emit('inventory-updated', updatedItems);
         }
 
-        // Build category-role map from settings (case-insensitive)
-        const settings = await Settings.findOne();
-        const categoryRoles: Record<string, string> = {};
-        if (settings) {
-            for (const cat of settings.categories) {
-                if (cat.name) {
-                    categoryRoles[cat.name.trim().toLowerCase()] = cat.role || 'kitchen';
-                }
-            }
-        }
-
-        // Helper to determine role for an item
-        const getItemRole = (category: string) => {
-            const lower = (category || '').trim().toLowerCase();
-            let role = categoryRoles[lower];
-            if (!role) {
-                if (['drink', 'beer', 'wine', 'alcohol', 'cocktail', 'juice', 'water', 'soda', 'tea', 'coffee'].some(k => lower.includes(k))) {
-                    role = 'bar';
-                } else {
-                    role = 'kitchen';
-                }
-            }
-            return role;
-        };
+        // Build category-role map from settings
+        const categoryRoles = await buildCategoryRoleMap();
 
         // Separate items by role
-        const kitchenItems = order.items.filter((i) => getItemRole(i.category) === 'kitchen');
-        const barItems = order.items.filter((i) => getItemRole(i.category) === 'bar');
+        const kitchenItems = order.items.filter((i) => getItemRole(i.category, categoryRoles) === 'kitchen');
+        const barItems = order.items.filter((i) => getItemRole(i.category, categoryRoles) === 'bar');
 
         const io = getIO();
 

@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import { getSocket } from '../../lib/socket';
+import { buildKitchenTicketHtml, wrapKitchenTickets, buildCheckReceiptHtml, printViaIframe } from '../../lib/printReceipt';
 import toast from 'react-hot-toast';
 import { HiOutlinePlus, HiOutlineMinus, HiOutlineShoppingCart, HiOutlineCheck, HiOutlineArrowLeft, HiOutlineX, HiOutlineViewGrid, HiOutlineViewList, HiOutlineClipboardList, HiOutlineRefresh, HiOutlineSwitchHorizontal } from 'react-icons/hi';
 
@@ -133,105 +134,51 @@ const WaiterDashboard: React.FC = () => {
 
         const { tableNumber: tNum, kitchenItems, barItems, createdAt } = newOrderToPrint;
 
-        const generateReceiptHTML = (title: string, items: any[], addPageBreak: boolean) => {
-            if (items.length === 0) return '';
-            
-            const trs = items.map(item => `
-                <tr>
-                    <td>${item.name}</td>
-                    <td style="text-align:center">${item.quantity}</td>
-                </tr>
-            `).join('');
+        const dashIdx = tNum.lastIndexOf('-');
+        const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tNum);
 
-            const headerHtml = '<thead><tr><td style="width: 70%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 30%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td></tr></thead>';
-            
-            const dashIdx = tNum.lastIndexOf('-');
-            const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === tNum);
-            
-            let displayNum = tNum;
-            let hallName = null;
-            if (dashIdx > 0 && !isCabinet) {
-               hallName = tNum.substring(0, dashIdx);
-               displayNum = tNum.substring(dashIdx + 1);
-            } else if (!isCabinet) {
-               const parsedInt = parseInt(tNum);
-               if (!isNaN(parsedInt)) {
-                   const hall = halls.find(h => h.type !== 'cabinet' && h.tables.includes(parsedInt));
-                   if (hall) hallName = hall.name;
-               }
+        let displayNum = tNum;
+        let hallName = null;
+        if (dashIdx > 0 && !isCabinet) {
+            hallName = tNum.substring(0, dashIdx);
+            displayNum = tNum.substring(dashIdx + 1);
+        } else if (!isCabinet) {
+            const parsedInt = parseInt(tNum);
+            if (!isNaN(parsedInt)) {
+                const hall = halls.find(h => h.type !== 'cabinet' && h.tables.includes(parsedInt));
+                if (hall) hallName = hall.name;
             }
-            
-            const tableLabel = isCabinet ? tNum : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
+        }
 
-            const d = new Date(createdAt);
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const yyyy = d.getFullYear();
-            const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-            const dateStr = `${dd}/${mm}/${yyyy} ${timeStr}`;
+        const tableLabel = isCabinet ? tNum : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
 
-            const containerHTML = `
-                <div class="receipt-page" style="${addPageBreak ? 'page-break-after: always; break-after: page;' : ''}">
-                    <div style="text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px; text-transform: uppercase;">${title}</div>
-                    <h3 style="margin-bottom: 3mm;">${tableLabel}</h3>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #000; padding-bottom: 2mm; margin-bottom: 3mm; font-size: 14px; font-weight: bold;">
-                        <span>${user?.username ? user.username : ''}</span>
-                        <span>${dateStr}</span>
-                    </div>
-                    <table>${headerHtml}<tbody>${trs}</tbody></table>
-                    <div class="f">Nuş Olsun!</div>
-                </div>
-            `;
+        const d = new Date(createdAt);
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        const dateStr = `${dd}/${mm}/${yyyy} ${timeStr}`;
 
-            return containerHTML;
-        };
+        const kitchenHtml = buildKitchenTicketHtml({
+            title: 'Mətbəx',
+            tableLabel,
+            waiterName: user?.username,
+            time: dateStr,
+            items: kitchenItems,
+            addPageBreak: barItems.length > 0,
+        });
+        const barHtml = buildKitchenTicketHtml({
+            title: 'Bar',
+            tableLabel,
+            waiterName: user?.username,
+            time: dateStr,
+            items: barItems,
+            addPageBreak: false,
+        });
+        const fullHtml = kitchenHtml + barHtml;
 
-        const kitchenHTML = generateReceiptHTML('Mətbəx', kitchenItems, barItems.length > 0);
-        const barHTML = generateReceiptHTML('Bar', barItems, false);
-        const fullHTML = kitchenHTML + barHTML;
-
-        if (fullHTML) {
-            const iframe = document.createElement('iframe');
-            iframe.style.position = 'fixed';
-            iframe.style.top = '-10000px';
-            iframe.style.left = '-10000px';
-            iframe.style.width = '80mm';
-            iframe.style.height = '0';
-            document.body.appendChild(iframe);
-            const doc = iframe.contentDocument || iframe.contentWindow?.document;
-            
-            if (doc) {
-                doc.open();
-                doc.write(`
-                    <!DOCTYPE html><html><head><title>Sifariş Çeki</title>
-                    <style>
-                    @page { size: 80mm auto; margin: 0 }
-                    * { margin: 0; padding: 0; box-sizing: border-box }
-                    body { font-family: 'Courier New', monospace; font-size: 16px; line-height: 1.5; background: #fff; margin: 0; padding: 0; }
-                    .receipt-page { width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; }
-                    .pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }
-                    h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }
-                    .info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }
-                    table { width: 100%; border-collapse: collapse; margin: 3mm 0; }
-                    td { font-size: 16px; font-weight: bold; padding: 4px 0; }
-                    .f { text-align: center; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm; margin-top: 3mm; }
-                    </style></head>
-                    <body>
-                        ${fullHTML}
-                    </body>
-                    </html>
-                `);
-                doc.close();
-
-                // Wait slightly for DOM to settle before printing
-                setTimeout(() => {
-                    iframe.contentWindow?.print();
-                    setTimeout(() => document.body.removeChild(iframe), 500);
-                }, 250);
-            } else {
-                // Fallback if no doc
-                document.body.removeChild(iframe);
-            }
+        if (fullHtml) {
+            printViaIframe(wrapKitchenTickets(fullHtml));
         }
 
         // Clear after printing
@@ -788,55 +735,18 @@ const WaiterDashboard: React.FC = () => {
                                             return acc;
                                         }, [] as { name: string; qty: number; price: number, totalPrice: number }[]);
 
-                                        const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' +
-                                            mergedDeletedItems.map(item => `<tr><td style="color:red; text-decoration:line-through; font-style:italic">Ləğv: ${item.name}</td><td style="text-align:center">-${item.qty}</td><td style="text-align:right">-${item.totalPrice.toFixed(2)}</td></tr>`).join('') + '</tbody>';
-
                                         const totalDeletedPrice = deletedItemsToPrint.reduce((sum, item) => sum + item.price, 0);
 
-                                        const receiptHtml = [
-                                            '<!DOCTYPE html><html><head><title>Check</title>',
-                                            '<style>',
-                                            '@page { size: 80mm auto; margin: 0 }',
-                                            '* { margin: 0; padding: 0; box-sizing: border-box }',
-                                            "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
-                                            '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
-                                            'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
-                                            '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
-                                            'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
-                                            'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
-                                            '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right; color: red }',
-                                            '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
-                                            '</style></head>',
-                                            '<body>',
-                                            '<div class="pub">Artıbir</div>',
-                                            `<h3>${tableLabel}</h3>`,
-                                            '<div class="info">',
-                                            `<span>Ofisiant: ${user?.username || ''}</span>`,
-                                            `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
-                                            '</div>',
-                                            `<table>${itemsHtml}</table>`,
-                                            `<div class="t">LƏĞV EDİLDİ (QAYTARILACAQ): ${totalDeletedPrice.toFixed(2)} AZN</div>`,
-                                            '<div class="f">LƏĞV ÇEKİ</div>',
-                                            '</body></html>',
-                                        ].join('');
-
-                                        const iframe = document.createElement('iframe');
-                                        iframe.style.position = 'fixed';
-                                        iframe.style.top = '-10000px';
-                                        iframe.style.left = '-10000px';
-                                        iframe.style.width = '80mm';
-                                        iframe.style.height = '0';
-                                        document.body.appendChild(iframe);
-                                        const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                                        if (doc) {
-                                            doc.open();
-                                            doc.write(receiptHtml);
-                                            doc.close();
-                                            setTimeout(() => {
-                                                iframe.contentWindow?.print();
-                                                setTimeout(() => document.body.removeChild(iframe), 500);
-                                            }, 250);
-                                        }
+                                        const receiptHtml = buildCheckReceiptHtml({
+                                            subtitle: tableLabel,
+                                            staffLabel: `Ofisiant: ${user?.username || ''}`,
+                                            items: mergedDeletedItems.map(item => ({ name: item.name, qty: item.qty, price: item.price, cancelled: true })),
+                                            total: totalDeletedPrice,
+                                            totalLabel: 'LƏĞV EDİLDİ (QAYTARILACAQ)',
+                                            totalColor: 'red',
+                                            footer: 'LƏĞV ÇEKİ',
+                                        });
+                                        printViaIframe(receiptHtml);
                                         setDeletedItemsToPrint([]);
                                     }
                                     setIsEditingOrder(false);
@@ -890,53 +800,14 @@ const WaiterDashboard: React.FC = () => {
                                         const tableLabel = isCabinet ? (tableNumber || '') : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
                                         const entries2 = Array.from(merged2.entries());
                                         const receiptTotal = entries2.reduce((sum, [, v]) => sum + v.price * v.qty, 0);
-                                        const itemsHtml = '<thead><tr><td style="width: 50%; border-bottom:1px dashed #000;padding-bottom:3px">Məhsul adı</td><td style="width: 20%; text-align:center;border-bottom:1px dashed #000;padding-bottom:3px">Say</td><td style="width: 30%; text-align:right;border-bottom:1px dashed #000;padding-bottom:3px">Qiymət</td></tr></thead><tbody>' + entries2.map(([name, { qty, price }]) =>
-                                            `<tr><td>${name}</td><td style="text-align:center">${qty}</td><td style="text-align:right">${(price * qty).toFixed(2)}</td></tr>`
-                                        ).join('') + '</tbody>';
-                                        const receiptHtml = [
-                                            '<!DOCTYPE html><html><head><title>Check</title>',
-                                            '<style>',
-                                            '@page { size: 80mm auto; margin: 0 }',
-                                            '* { margin: 0; padding: 0; box-sizing: border-box }',
-                                            "body { font-family: 'Courier New', monospace; width: 72mm; min-height: 80mm; margin: 0 auto; padding: 5mm 4mm; font-size: 16px; line-height: 1.5 }",
-                                            '.pub { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 3mm; letter-spacing: 1px }',
-                                            'h3 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 2mm }',
-                                            '.info { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 1px dashed #000 }',
-                                            'table { width: 100%; border-collapse: collapse; margin: 3mm 0 }',
-                                            'td { font-size: 16px; font-weight: bold; padding: 4px 0 }',
-                                            '.t { border-top: 2px dashed #000; font-weight: bold; font-size: 18px; padding-top: 3mm; margin-top: 3mm; text-align: right }',
-                                            '.f { text-align: center; margin-top: 4mm; font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; border-top: 1px dashed #000; padding-top: 3mm }',
-                                            '</style></head>',
-                                            '<body>',
-                                            '<div class="pub">Artıbir</div>',
-                                            `<h3>${tableLabel}</h3>`,
-                                            '<div class="info">',
-                                            `<span>Ofisiant: ${user?.username || ''}</span>`,
-                                            `<span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>`,
-                                            '</div>',
-                                            `<table>${itemsHtml}</table>`,
-                                            `<div class="t">Cəmi: ${receiptTotal.toFixed(2)} AZN</div>`,
-                                            '<div class="f">Təşəkkürlər</div>',
-                                            '</body></html>',
-                                        ].join('');
 
-                                        const iframe = document.createElement('iframe');
-                                        iframe.style.position = 'fixed';
-                                        iframe.style.top = '-10000px';
-                                        iframe.style.left = '-10000px';
-                                        iframe.style.width = '80mm';
-                                        iframe.style.height = '0';
-                                        document.body.appendChild(iframe);
-                                        const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                                        if (doc) {
-                                            doc.open();
-                                            doc.write(receiptHtml);
-                                            doc.close();
-                                            setTimeout(() => {
-                                                iframe.contentWindow?.print();
-                                                setTimeout(() => document.body.removeChild(iframe), 500);
-                                            }, 250);
-                                        }
+                                        const receiptHtml = buildCheckReceiptHtml({
+                                            subtitle: tableLabel,
+                                            staffLabel: `Ofisiant: ${user?.username || ''}`,
+                                            items: entries2.map(([name, { qty, price }]) => ({ name, qty, price })),
+                                            total: receiptTotal,
+                                        });
+                                        printViaIframe(receiptHtml);
 
                                         try {
                                             setShowOrderPopup(false);
