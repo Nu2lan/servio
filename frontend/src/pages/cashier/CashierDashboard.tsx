@@ -160,11 +160,48 @@ const CashierDashboard: React.FC = () => {
             }
         }
 
+        // Compute working-day date label
+        let dateLabel = new Date().toLocaleDateString('en-GB');
+        try {
+            const { data: settings } = await api.get('/settings');
+            const startStr = settings.workingHoursStart || '10:00';
+            const endStr = settings.workingHoursEnd || '23:59';
+            const [sh, sm] = startStr.split(':').map(Number);
+            const [eh, em] = endStr.split(':').map(Number);
+            const startMin = sh * 60 + sm;
+            const endMin = eh * 60 + em;
+
+            if (startMin > endMin) {
+                // Cross-midnight shift: show two dates
+                const now = new Date();
+                const today = new Date(now);
+                const nowMin = now.getHours() * 60 + now.getMinutes();
+
+                let shiftStartDate: Date;
+                if (nowMin >= startMin) {
+                    // After start time: shift started today
+                    shiftStartDate = today;
+                } else {
+                    // After midnight: shift started yesterday
+                    shiftStartDate = new Date(today);
+                    shiftStartDate.setDate(shiftStartDate.getDate() - 1);
+                }
+                const shiftEndDate = new Date(shiftStartDate);
+                shiftEndDate.setDate(shiftEndDate.getDate() + 1);
+
+                dateLabel = `${shiftStartDate.toLocaleDateString('en-GB')} - ${shiftEndDate.toLocaleDateString('en-GB')}`;
+            }
+        } catch {
+            // fallback to single date
+        }
+
+        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
         const items = Array.from(merged.entries()).map(([name, { qty, price }]) => ({ name, qty, price }));
         const receiptHtml = buildCheckReceiptHtml({
             subtitle: 'Gün sonu',
             staffLabel: user?.username,
-            time: `${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}`,
+            time: `${dateLabel} ${timeNow}`,
             items,
             cashIncome,
             cardIncome,

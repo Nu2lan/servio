@@ -15,6 +15,8 @@ export interface ISettings extends Document {
     tableCount: number;
     categories: ICategory[];
     halls: IHall[];
+    workingHoursStart: string;
+    workingHoursEnd: string;
 }
 
 const categorySchema = new Schema<ICategory>(
@@ -85,6 +87,14 @@ const settingsSchema = new Schema<ISettings>(
             default: [
                 { name: 'Zal 1', tables: Array.from({ length: 8 }, (_, i) => i + 1), type: 'hall' as const },
             ],
+        },
+        workingHoursStart: {
+            type: String,
+            default: '10:00',
+        },
+        workingHoursEnd: {
+            type: String,
+            default: '02:00',
         },
     },
     { timestamps: true }

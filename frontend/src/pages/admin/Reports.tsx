@@ -37,6 +37,8 @@ const Reports: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [logs, setLogs] = useState<InventoryLog[]>([]);
     const [loading, setLoading] = useState(true);
+    const [workingHoursStart, setWorkingHoursStart] = useState('10:00');
+    const [workingHoursEnd, setWorkingHoursEnd] = useState('02:00');
 
     useEffect(() => {
         if (tab === 'orders') fetchOrders();
@@ -46,8 +48,13 @@ const Reports: React.FC = () => {
     const fetchOrders = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/admin/reports/orders');
-            setOrders(data);
+            const [ordersRes, settingsRes] = await Promise.all([
+                api.get('/admin/reports/orders'),
+                api.get('/admin/settings'),
+            ]);
+            setOrders(ordersRes.data);
+            if (settingsRes.data.workingHoursStart) setWorkingHoursStart(settingsRes.data.workingHoursStart);
+            if (settingsRes.data.workingHoursEnd) setWorkingHoursEnd(settingsRes.data.workingHoursEnd);
         } catch {
             toast.error('Sifarişləri yükləmək mümkün olmadı');
         } finally {
@@ -58,8 +65,13 @@ const Reports: React.FC = () => {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/admin/reports/inventory');
-            setLogs(data);
+            const [logsRes, settingsRes] = await Promise.all([
+                api.get('/admin/reports/inventory'),
+                api.get('/admin/settings'),
+            ]);
+            setLogs(logsRes.data);
+            if (settingsRes.data.workingHoursStart) setWorkingHoursStart(settingsRes.data.workingHoursStart);
+            if (settingsRes.data.workingHoursEnd) setWorkingHoursEnd(settingsRes.data.workingHoursEnd);
         } catch {
             toast.error('Anbar tarixçəsini yükləmək mümkün olmadı');
         } finally {
@@ -73,26 +85,58 @@ const Reports: React.FC = () => {
         setExpandedDates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
     };
 
-    // Group orders by date
-    const groupedOrders = orders.reduce((acc, order) => {
-        const dateStr = new Date(order.createdAt).toLocaleDateString('en-GB');
-        if (!acc[dateStr]) {
-            acc[dateStr] = {
-                orders: [],
-                totalRevenue: 0,
-            };
+    // Compute shift-start in minutes
+    const [shStr, smStr] = workingHoursStart.split(':').map(Number);
+    const [ehStr, emStr] = workingHoursEnd.split(':').map(Number);
+    const shiftStartMin = shStr * 60 + (smStr || 0);
+    const shiftEndMin = ehStr * 60 + (emStr || 0);
+    const isCrossMidnight = shiftStartMin > shiftEndMin;
+
+    /**
+     * Get the shift-date key for an order.
+     * For cross-midnight shifts (e.g. 16:00→04:00):
+     *   - Orders from 16:00–23:59 belong to that calendar day's shift
+     *   - Orders from 00:00–04:00 belong to the PREVIOUS calendar day's shift
+     * Returns "DD/MM/YYYY" (single date) or "DD/MM/YYYY - DD/MM/YYYY" (cross-midnight).
+     */
+    const getShiftKey = (orderDate: string) => {
+        const d = new Date(orderDate);
+        const orderMin = d.getHours() * 60 + d.getMinutes();
+
+        let shiftDate = new Date(d);
+        if (isCrossMidnight && orderMin < shiftStartMin) {
+            // Order is after midnight but before shift start → belongs to yesterday's shift
+            shiftDate.setDate(shiftDate.getDate() - 1);
         }
-        acc[dateStr].orders.push(order);
+
+        const dayStr = shiftDate.toLocaleDateString('en-GB');
+
+        if (isCrossMidnight) {
+            const nextDay = new Date(shiftDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            return `${dayStr} - ${nextDay.toLocaleDateString('en-GB')}`;
+        }
+        return dayStr;
+    };
+
+    // Group orders by shift date
+    const groupedOrders = orders.reduce((acc, order) => {
+        const key = getShiftKey(order.createdAt);
+        if (!acc[key]) {
+            acc[key] = { orders: [], totalRevenue: 0 };
+        }
+        acc[key].orders.push(order);
         if (order.status === 'paid' || order.status === 'archived') {
-            acc[dateStr].totalRevenue += order.totalPrice;
+            acc[key].totalRevenue += order.totalPrice;
         }
         return acc;
     }, {} as Record<string, { orders: Order[], totalRevenue: number }>);
 
     const sortedDates = Object.keys(groupedOrders).sort((a, b) => {
-        // Simple sort DD/MM/YYYY by converting back to date, or just simple string sort won't work perfectly.
-        const [d1, m1, y1] = a.split('/');
-        const [d2, m2, y2] = b.split('/');
+        // Extract the first DD/MM/YYYY from each key for sorting
+        const getFirst = (s: string) => s.split(' - ')[0];
+        const [d1, m1, y1] = getFirst(a).split('/');
+        const [d2, m2, y2] = getFirst(b).split('/');
         return new Date(`${y2}-${m2}-${d2}`).getTime() - new Date(`${y1}-${m1}-${d1}`).getTime();
     });
 
@@ -102,20 +146,19 @@ const Reports: React.FC = () => {
         setExpandedLogDates(prev => ({ ...prev, [dateStr]: !prev[dateStr] }));
     };
 
-    // Group logs by date
+    // Group logs by shift date
     const groupedLogs = logs.reduce((acc, log) => {
-        const dateObj = new Date(log.createdAt);
-        const dateStr = dateObj.toLocaleDateString('en-GB');
+        const key = getShiftKey(log.createdAt);
         
-        if (!acc[dateStr]) {
-            acc[dateStr] = {
+        if (!acc[key]) {
+            acc[key] = {
                 logs: [],
                 totalQuantityUsed: 0
             };
         }
 
-        // Merge by inventoryItemName for the entire day
-        const existingLog: any = acc[dateStr].logs.find(
+        // Merge by inventoryItemName for the entire shift
+        const existingLog: any = acc[key].logs.find(
             (l) => l.inventoryItemName === log.inventoryItemName
         );
 
@@ -142,20 +185,21 @@ const Reports: React.FC = () => {
                 existingLog.stockAfter = log.stockAfter;
             }
         } else {
-            acc[dateStr].logs.push({ 
+            acc[key].logs.push({ 
                 ...log, 
                 orderCount: 1,
                 _timestamps: { earliest: new Date(log.createdAt).getTime(), latest: new Date(log.createdAt).getTime() } 
             } as any);
         }
 
-        acc[dateStr].totalQuantityUsed += log.quantityUsed;
+        acc[key].totalQuantityUsed += log.quantityUsed;
         return acc;
     }, {} as Record<string, { logs: (InventoryLog & { orderCount?: number })[], totalQuantityUsed: number }>);
 
     const sortedLogDates = Object.keys(groupedLogs).sort((a, b) => {
-        const [d1, m1, y1] = a.split('/');
-        const [d2, m2, y2] = b.split('/');
+        const getFirst = (s: string) => s.split(' - ')[0];
+        const [d1, m1, y1] = getFirst(a).split('/');
+        const [d2, m2, y2] = getFirst(b).split('/');
         return new Date(`${y2}-${m2}-${d2}`).getTime() - new Date(`${y1}-${m1}-${d1}`).getTime();
     });
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineCheck, HiOutlineX } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineCheck, HiOutlineX, HiOutlineClock } from 'react-icons/hi';
 
 interface Category {
     name: string;
@@ -43,6 +43,12 @@ const Settings: React.FC = () => {
     const [editHallTables, setEditHallTables] = useState('');
     const [editHallType, setEditHallType] = useState<'hall' | 'cabinet'>('hall');
 
+    // Working hours state
+    const [workingHoursStart, setWorkingHoursStart] = useState('10:00');
+    const [workingHoursEnd, setWorkingHoursEnd] = useState('02:00');
+    const [savedStart, setSavedStart] = useState('10:00');
+    const [savedEnd, setSavedEnd] = useState('02:00');
+
     useEffect(() => {
         fetchSettings();
     }, []);
@@ -55,6 +61,10 @@ const Settings: React.FC = () => {
             );
             setCategories(cats);
             setHalls(data.halls || []);
+            setWorkingHoursStart(data.workingHoursStart || '10:00');
+            setWorkingHoursEnd(data.workingHoursEnd || '02:00');
+            setSavedStart(data.workingHoursStart || '10:00');
+            setSavedEnd(data.workingHoursEnd || '02:00');
         } catch {
             toast.error('Tənzimləmələri yükləmək mümkün olmadı');
         } finally {
@@ -237,6 +247,58 @@ const Settings: React.FC = () => {
         <Layout title="Admin Paneli" navItems={adminNav}>
             <div className="space-y-8">
                 <h2 className="text-xl font-bold text-surface-100">Tənzimləmələr</h2>
+
+                {/* ─── Working Hours ─── */}
+                <div className="card">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2 mr-auto">
+                            <HiOutlineClock className="w-5 h-5 text-brand-400" />
+                            <h3 className="text-base font-semibold text-surface-100">İş saatları</h3>
+                        </div>
+                        <input
+                            type="text"
+                            className="input w-20 text-center font-mono"
+                            value={workingHoursStart}
+                            onChange={(e) => {
+                                const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                const formatted = digits.length > 2 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
+                                setWorkingHoursStart(formatted);
+                            }}
+                            placeholder="10:00"
+                            maxLength={5}
+                        />
+                        <span className="text-surface-400 font-medium">–</span>
+                        <input
+                            type="text"
+                            className="input w-20 text-center font-mono"
+                            value={workingHoursEnd}
+                            onChange={(e) => {
+                                const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                const formatted = digits.length > 2 ? digits.slice(0, 2) + ':' + digits.slice(2) : digits;
+                                setWorkingHoursEnd(formatted);
+                            }}
+                            placeholder="02:00"
+                            maxLength={5}
+                        />
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await api.put('/admin/settings', { workingHoursStart, workingHoursEnd });
+                                    setSavedStart(workingHoursStart);
+                                    setSavedEnd(workingHoursEnd);
+                                    toast.success('İş saatları yeniləndi');
+                                } catch {
+                                    toast.error('İş saatlarını saxlamaq mümkün olmadı');
+                                }
+                            }}
+                            disabled={workingHoursStart === savedStart && workingHoursEnd === savedEnd}
+                            className="btn-primary disabled:opacity-40"
+                        >
+                            <HiOutlineCheck className="w-4 h-4" />
+                            Saxla
+                        </button>
+                    </div>
+                </div>
 
 
                 {/* ─── Halls Management ─── */}

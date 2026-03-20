@@ -383,7 +383,7 @@ router.get('/settings', async (_req: AuthRequest, res: Response): Promise<void> 
 // PUT /api/admin/settings
 router.put('/settings', async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { tableCount, halls } = req.body;
+        const { tableCount, halls, workingHoursStart, workingHoursEnd } = req.body;
         let settings = await Settings.findOne();
         if (!settings) {
             settings = new Settings({});
@@ -393,6 +393,8 @@ router.put('/settings', async (req: AuthRequest, res: Response): Promise<void> =
             settings.halls = halls;
             settings.markModified('halls');
         }
+        if (workingHoursStart !== undefined) settings.workingHoursStart = workingHoursStart;
+        if (workingHoursEnd !== undefined) settings.workingHoursEnd = workingHoursEnd;
         await settings.save();
         res.json(settings);
     } catch (error) {
