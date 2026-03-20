@@ -17,6 +17,7 @@ export interface ISettings extends Document {
     halls: IHall[];
     workingHoursStart: string;
     workingHoursEnd: string;
+    timezone: string;
 }
 
 const categorySchema = new Schema<ICategory>(
@@ -95,6 +96,10 @@ const settingsSchema = new Schema<ISettings>(
         workingHoursEnd: {
             type: String,
             default: '02:00',
+        },
+        timezone: {
+            type: String,
+            default: 'Asia/Baku',
         },
     },
     { timestamps: true }

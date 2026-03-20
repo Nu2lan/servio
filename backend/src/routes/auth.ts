@@ -9,10 +9,15 @@ const router = Router();
 /**
  * Check if the current time is within working hours.
  * Supports cross-midnight ranges (e.g. 10:00 → 02:00).
+ * Uses the given IANA timezone to compute local time.
  */
-function isWithinWorkingHours(startStr: string, endStr: string): boolean {
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+function isWithinWorkingHours(startStr: string, endStr: string, timezone: string): boolean {
+    // Get current time in the configured timezone
+    const nowStr = new Date().toLocaleString('en-GB', { timeZone: timezone, hour12: false });
+    // nowStr format: "DD/MM/YYYY, HH:MM:SS"
+    const timePart = nowStr.split(', ')[1]; // "HH:MM:SS"
+    const [h, m] = timePart.split(':').map(Number);
+    const currentMinutes = h * 60 + m;
 
     const [sh, sm] = startStr.split(':').map(Number);
     const [eh, em] = endStr.split(':').map(Number);
@@ -56,7 +61,7 @@ router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => 
             if (settings) {
                 const start = settings.workingHoursStart || '00:00';
                 const end = settings.workingHoursEnd || '23:59';
-                if (!isWithinWorkingHours(start, end)) {
+                if (!isWithinWorkingHours(start, end, settings.timezone || 'Asia/Baku')) {
                     res.status(403).json({ message: `İş saatı xaricində giriş mümkün deyil (${start} – ${end})` });
                     return;
                 }
@@ -91,7 +96,7 @@ router.post('/pin-login', async (req: AuthRequest, res: Response): Promise<void>
             if (settings) {
                 const start = settings.workingHoursStart || '00:00';
                 const end = settings.workingHoursEnd || '23:59';
-                if (!isWithinWorkingHours(start, end)) {
+                if (!isWithinWorkingHours(start, end, settings.timezone || 'Asia/Baku')) {
                     res.status(403).json({ message: `İş saatı xaricində giriş mümkün deyil (${start} – ${end})` });
                     return;
                 }
