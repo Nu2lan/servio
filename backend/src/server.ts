@@ -18,6 +18,7 @@ import adminRoutes from './routes/admin';
 import waiterRoutes from './routes/waiter';
 import kitchenRoutes from './routes/kitchen';
 import cashierRoutes from './routes/cashier';
+import qzRoutes from './routes/qz';
 
 const app = express();
 const httpServer = createServer(app);
@@ -47,6 +48,7 @@ app.use('/api/waiter', waiterRoutes);
 app.use('/api/kitchen', kitchenRoutes);
 app.use('/api/bar', kitchenRoutes);  // Bar reuses kitchen route with role-based filtering
 app.use('/api/cashier', cashierRoutes);
+app.use('/api/qz', qzRoutes);
 
 // Public settings endpoint (read-only, any authenticated user)
 app.get('/api/settings', async (_req, res) => {

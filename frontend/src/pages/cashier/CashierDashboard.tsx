@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import { getSocket } from '../../lib/socket';
-import { buildCheckReceiptHtml, printViaIframe } from '../../lib/printReceipt';
+import { buildCheckReceiptHtml, printHtmlWithQz } from '../../lib/printReceipt';
 import toast from 'react-hot-toast';
 import { HiOutlineCash, HiOutlineCheck, HiOutlineViewGrid, HiOutlineViewList, HiOutlinePrinter, HiOutlineDocumentText } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
@@ -51,6 +51,7 @@ const CashierDashboard: React.FC = () => {
     const [filter, setFilter] = useState<'all' | 'confirmed' | 'paid'>('paid');
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
     const [halls, setHalls] = useState<Hall[]>([]);
+    const [printerReceipt, setPrinterReceipt] = useState('');
     const [activeTab, setActiveTab] = useState<string>('all');
     const [showEndOfDayModal, setShowEndOfDayModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState<{ isOpen: boolean, orderIds: string[] }>({ isOpen: false, orderIds: [] });
@@ -92,6 +93,7 @@ const CashierDashboard: React.FC = () => {
         try {
             const { data } = await api.get('/settings');
             setHalls(data.halls || []);
+            setPrinterReceipt(data.printerReceipt || '');
         } catch {
             // ignore
         }
@@ -206,7 +208,7 @@ const CashierDashboard: React.FC = () => {
             cashIncome,
             cardIncome,
         });
-        printViaIframe(receiptHtml);
+        printHtmlWithQz(receiptHtml, printerReceipt);
 
         try {
             await api.patch('/cashier/orders/end-of-day');
@@ -231,7 +233,7 @@ const CashierDashboard: React.FC = () => {
             items: group.items.map(item => ({ name: item.name, qty: item.quantity, price: item.price })),
             total: group.totalPrice,
         });
-        printViaIframe(receiptHtml);
+        printHtmlWithQz(receiptHtml, printerReceipt);
 
         try {
             await api.patch('/cashier/orders/print-check', { orderIds: group.orderIds });

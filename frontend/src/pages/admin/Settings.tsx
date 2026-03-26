@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineCheck, HiOutlineX, HiOutlineClock } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineCheck, HiOutlineX, HiOutlineClock, HiOutlinePrinter, HiOutlineRefresh, HiOutlineChevronDown } from 'react-icons/hi';
+import qz from 'qz-tray';
+import { initQzSecurity } from '../../lib/printReceipt';
 
 interface Category {
     name: string;
@@ -49,6 +51,19 @@ const Settings: React.FC = () => {
     const [savedStart, setSavedStart] = useState('10:00');
     const [savedEnd, setSavedEnd] = useState('02:00');
 
+    // Printers state
+    const [printers, setPrinters] = useState<string[]>([]);
+    const [qzConnected, setQzConnected] = useState(false);
+    const [findingPrinters, setFindingPrinters] = useState(false);
+    
+    const [printerReceipt, setPrinterReceipt] = useState('');
+    const [printerKitchen, setPrinterKitchen] = useState('');
+    const [printerBar, setPrinterBar] = useState('');
+    const [printerCancel, setPrinterCancel] = useState('');
+    const [savedPrinters, setSavedPrinters] = useState({
+        receipt: '', kitchen: '', bar: '', cancel: ''
+    });
+
     useEffect(() => {
         fetchSettings();
     }, []);
@@ -65,10 +80,40 @@ const Settings: React.FC = () => {
             setWorkingHoursEnd(data.workingHoursEnd || '02:00');
             setSavedStart(data.workingHoursStart || '10:00');
             setSavedEnd(data.workingHoursEnd || '02:00');
+            setPrinterReceipt(data.printerReceipt || '');
+            setPrinterKitchen(data.printerKitchen || '');
+            setPrinterBar(data.printerBar || '');
+            setPrinterCancel(data.printerCancel || '');
+            setSavedPrinters({
+                receipt: data.printerReceipt || '',
+                kitchen: data.printerKitchen || '',
+                bar: data.printerBar || '',
+                cancel: data.printerCancel || ''
+            });
         } catch {
             toast.error('Tənzimləmələri yükləmək mümkün olmadı');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const connectAndFindPrinters = async () => {
+        setFindingPrinters(true);
+        initQzSecurity();
+        try {
+            if (!qz.websocket.isActive()) {
+                await qz.websocket.connect({ retries: 2, delay: 1 });
+            }
+            setQzConnected(true);
+            const list = await qz.printers.find();
+            setPrinters(list);
+            toast.success('Printerlər uğurla tapıldı');
+        } catch (err) {
+            console.error('QZ connection error:', err);
+            toast.error('QZ Tray ilə əlaqə qurulmadı. QZ Tray-in arxa planda işlədiyindən əmin olun.');
+            setQzConnected(false);
+        } finally {
+            setFindingPrinters(false);
         }
     };
 
@@ -293,6 +338,83 @@ const Settings: React.FC = () => {
                             }}
                             disabled={workingHoursStart === savedStart && workingHoursEnd === savedEnd}
                             className="btn-primary disabled:opacity-40"
+                        >
+                            <HiOutlineCheck className="w-4 h-4" />
+                            Saxla
+                        </button>
+                    </div>
+                </div>
+
+                {/* ─── Printers (QZ Tray) ─── */}
+                <div className="card space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <HiOutlinePrinter className="w-5 h-5 text-brand-400" />
+                            <h3 className="text-lg font-semibold text-surface-100">Çap Qurğuları (Səssiz Çap)</h3>
+                        </div>
+                        <button
+                            onClick={connectAndFindPrinters}
+                            disabled={findingPrinters}
+                            className="btn-secondary text-xs h-8 px-3"
+                        >
+                            <HiOutlineRefresh className={`w-4 h-4 ${findingPrinters ? 'animate-spin' : ''}`} />
+                            {printers.length > 0 ? 'Yenidən Axtar' : 'Axtar'}
+                        </button>
+                    </div>
+                    <p className="text-sm text-surface-400">
+                        Səssiz çap üçün QZ Tray proqramı aktiv olmalıdır.{' '}
+                        {!qzConnected && <span className="text-brand-400">Printerləri seçmək üçün "Axtar" düyməsinə basın.</span>}
+                        {qzConnected && <span className="text-green-400">QZ Tray qoşuludur ({printers.length} printer tapıldı).</span>}
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[
+                            { label: 'Kassa (Hesab, Gün sonu)', value: printerReceipt, setter: setPrinterReceipt },
+                            { label: 'Mətbəx', value: printerKitchen, setter: setPrinterKitchen },
+                            { label: 'Bar', value: printerBar, setter: setPrinterBar },
+                            { label: 'Silinmə (Ləğv)', value: printerCancel, setter: setPrinterCancel },
+                        ].map((item, i) => (
+                            <div key={i} className="space-y-1">
+                                <label className="block text-xs text-surface-400">{item.label}</label>
+                                <div className="relative">
+                                    <select
+                                        className="input w-full appearance-none bg-surface-900 pr-10"
+                                        value={item.value}
+                                        onChange={(e) => item.setter(e.target.value)}
+                                    >
+                                        <option value="">(Varsayılan brauzer pəncərəsi)</option>
+                                        {printers.map(p => <option key={p} value={p}>{p}</option>)}
+                                        {/* Include current value if it's not in the detected list so it doesn't get lost */}
+                                        {item.value && !printers.includes(item.value) && (
+                                            <option value={item.value}>{item.value} (bağlıdır/tapılmadı)</option>
+                                        )}
+                                    </select>
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-surface-400">
+                                        <HiOutlineChevronDown className="w-5 h-5" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div className="flex justify-end pt-2">
+                        <button
+                            onClick={async () => {
+                                try {
+                                    await api.put('/admin/settings', { printerReceipt, printerKitchen, printerBar, printerCancel });
+                                    setSavedPrinters({ receipt: printerReceipt, kitchen: printerKitchen, bar: printerBar, cancel: printerCancel });
+                                    toast.success('Çap qurğuları yadda saxlanıldı');
+                                } catch {
+                                    toast.error('Çap qurğularını saxlamaq mümkün olmadı');
+                                }
+                            }}
+                            disabled={
+                                printerReceipt === savedPrinters.receipt &&
+                                printerKitchen === savedPrinters.kitchen &&
+                                printerBar === savedPrinters.bar &&
+                                printerCancel === savedPrinters.cancel
+                            }
+                            className="btn-primary"
                         >
                             <HiOutlineCheck className="w-4 h-4" />
                             Saxla

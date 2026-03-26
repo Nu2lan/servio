@@ -18,6 +18,10 @@ export interface ISettings extends Document {
     workingHoursStart: string;
     workingHoursEnd: string;
     timezone: string;
+    printerReceipt: string;
+    printerKitchen: string;
+    printerBar: string;
+    printerCancel: string;
 }
 
 const categorySchema = new Schema<ICategory>(
@@ -100,6 +104,22 @@ const settingsSchema = new Schema<ISettings>(
         timezone: {
             type: String,
             default: 'Asia/Baku',
+        },
+        printerReceipt: {
+            type: String,
+            default: '',
+        },
+        printerKitchen: {
+            type: String,
+            default: '',
+        },
+        printerBar: {
+            type: String,
+            default: '',
+        },
+        printerCancel: {
+            type: String,
+            default: '',
         },
     },
     { timestamps: true }

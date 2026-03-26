@@ -3,6 +3,7 @@
  * Eliminates duplicated receipt CSS, HTML templates, and iframe print logic
  * across WaiterDashboard and CashierDashboard.
  */
+import toast from 'react-hot-toast';
 
 // ─── Shared 80mm receipt CSS ───
 const RECEIPT_CSS = `
@@ -143,7 +144,7 @@ export function wrapKitchenTickets(bodyHtml: string): string {
     return `<!DOCTYPE html><html><head><title>Sifariş Çeki</title><style>${RECEIPT_MULTIPAGE_CSS}</style></head><body>${bodyHtml}</body></html>`;
 }
 
-// ─── Print HTML via hidden iframe ───
+// ─── Print HTML via hidden iframe (Fallback / Browser Print) ───
 export function printViaIframe(html: string): void {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
@@ -164,5 +165,68 @@ export function printViaIframe(html: string): void {
         }, 250);
     } else {
         document.body.removeChild(iframe);
+    }
+}
+
+// ─── Print HTML silently via QZ Tray ───
+import qz from 'qz-tray';
+import api from './api';
+
+let securityInitialized = false;
+
+export function initQzSecurity() {
+    if (securityInitialized) return;
+    securityInitialized = true;
+
+    // Set up QZ Tray Certificates for "Remember this decision"
+    qz.security.setCertificatePromise((resolve: (cert: string) => void, reject: (err: Error) => void) => {
+        fetch('/qz-cert.pem', { cache: 'no-store' })
+            .then(r => r.text())
+            .then(resolve)
+            .catch(reject);
+    });
+
+    qz.security.setSignatureAlgorithm("SHA512");
+    qz.security.setSignaturePromise((toSign: string) => {
+        return function(resolve: (signature: string) => void, reject: (err: Error) => void) {
+            api.get('/qz/sign?request=' + encodeURIComponent(toSign))
+                .then(res => resolve(res.data))
+                .catch(reject);
+        };
+    });
+}
+
+export async function printHtmlWithQz(html: string, printerName: string | undefined): Promise<void> {
+    initQzSecurity();
+    if (!printerName) {
+        toast.error('Çap qurğusu seçilməyib! Tənzimləmələrdən printer seçin.');
+        console.warn('QZ Tray: No printer assigned.');
+        return;
+    }
+
+    try {
+        if (!qz.websocket.isActive()) {
+            await qz.websocket.connect({ retries: 2, delay: 1 });
+        }
+
+        const config = qz.configs.create(printerName, {
+            margins: 0,
+            width: 80, // mm
+            units: 'mm',
+            colorType: 'blackwhite'
+        });
+
+        const data = [{
+            type: 'pixel',
+            format: 'html',
+            flavor: 'plain',
+            data: html
+        }];
+
+        await qz.print(config, data);
+        console.log(`QZ Tray: Successfully printed to ${printerName}`);
+    } catch (err) {
+        console.error('QZ Tray Print Error:', err);
+        toast.error('QZ Tray ilə çap edərkən xəta baş verdi. Bağlantını yoxlayın.');
     }
 }

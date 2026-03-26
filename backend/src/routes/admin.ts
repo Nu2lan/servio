@@ -383,7 +383,7 @@ router.get('/settings', async (_req: AuthRequest, res: Response): Promise<void> 
 // PUT /api/admin/settings
 router.put('/settings', async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { tableCount, halls, workingHoursStart, workingHoursEnd } = req.body;
+        const { tableCount, halls, workingHoursStart, workingHoursEnd, printerReceipt, printerKitchen, printerBar, printerCancel } = req.body;
         let settings = await Settings.findOne();
         if (!settings) {
             settings = new Settings({});
@@ -395,6 +395,10 @@ router.put('/settings', async (req: AuthRequest, res: Response): Promise<void> =
         }
         if (workingHoursStart !== undefined) settings.workingHoursStart = workingHoursStart;
         if (workingHoursEnd !== undefined) settings.workingHoursEnd = workingHoursEnd;
+        if (printerReceipt !== undefined) settings.printerReceipt = printerReceipt;
+        if (printerKitchen !== undefined) settings.printerKitchen = printerKitchen;
+        if (printerBar !== undefined) settings.printerBar = printerBar;
+        if (printerCancel !== undefined) settings.printerCancel = printerCancel;
         await settings.save();
         res.json(settings);
     } catch (error) {

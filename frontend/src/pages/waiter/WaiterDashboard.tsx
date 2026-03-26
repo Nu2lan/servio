@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import { getSocket } from '../../lib/socket';
-import { buildKitchenTicketHtml, wrapKitchenTickets, buildCheckReceiptHtml, printViaIframe } from '../../lib/printReceipt';
+import { buildKitchenTicketHtml, wrapKitchenTickets, buildCheckReceiptHtml, printHtmlWithQz } from '../../lib/printReceipt';
 import toast from 'react-hot-toast';
 import { HiOutlinePlus, HiOutlineMinus, HiOutlineShoppingCart, HiOutlineCheck, HiOutlineArrowLeft, HiOutlineX, HiOutlineViewGrid, HiOutlineViewList, HiOutlineClipboardList, HiOutlineRefresh, HiOutlineSwitchHorizontal } from 'react-icons/hi';
 
@@ -45,6 +45,7 @@ const WaiterDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [activeCategory, setActiveCategory] = useState<string>('All');
+    const [printers, setPrinters] = useState({ receipt: '', kitchen: '', bar: '', cancel: '' });
     const [cartOpen, setCartOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [busyTables, setBusyTables] = useState<Map<string, { latestOrderAt: string; checkPrinted: boolean }>>(new Map());
@@ -175,11 +176,15 @@ const WaiterDashboard: React.FC = () => {
             items: barItems,
             addPageBreak: false,
         });
-        const fullHtml = kitchenHtml + barHtml;
-
-        if (fullHtml) {
-            printViaIframe(wrapKitchenTickets(fullHtml));
+        const printJobs = [];
+        if (kitchenHtml) {
+            printJobs.push(printHtmlWithQz(wrapKitchenTickets(kitchenHtml), printers.kitchen));
         }
+        if (barHtml) {
+            printJobs.push(printHtmlWithQz(wrapKitchenTickets(barHtml), printers.bar));
+        }
+
+        Promise.all(printJobs).catch(err => console.error('Print queue error:', err));
 
         // Clear after printing
         setNewOrderToPrint(null);
@@ -325,6 +330,12 @@ const WaiterDashboard: React.FC = () => {
             const h = data.halls || [];
             setHalls(h);
             if (h.length > 0) setActiveHall(h[0].name);
+            setPrinters({
+                receipt: data.printerReceipt || '',
+                kitchen: data.printerKitchen || '',
+                bar: data.printerBar || '',
+                cancel: data.printerCancel || ''
+            });
         } catch {
             // Use default
         }
@@ -746,7 +757,7 @@ const WaiterDashboard: React.FC = () => {
                                             totalColor: 'red',
                                             footer: 'LƏĞV ÇEKİ',
                                         });
-                                        printViaIframe(receiptHtml);
+                                        printHtmlWithQz(receiptHtml, printers.cancel);
                                         setDeletedItemsToPrint([]);
                                     }
                                     setIsEditingOrder(false);
@@ -807,7 +818,7 @@ const WaiterDashboard: React.FC = () => {
                                             items: entries2.map(([name, { qty, price }]) => ({ name, qty, price })),
                                             total: receiptTotal,
                                         });
-                                        printViaIframe(receiptHtml);
+                                        printHtmlWithQz(receiptHtml, printers.receipt);
 
                                         try {
                                             setShowOrderPopup(false);
