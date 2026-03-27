@@ -14,7 +14,7 @@ function createWindow() {
         height: 800,
         minWidth: 1024,
         minHeight: 768,
-        icon: path.join(process.env.VITE_PUBLIC || '', 'servio.png'), // Placeholder icon
+        icon: path.join(process.env.VITE_PUBLIC || '', 'icon.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.mjs'), // Vite builds it with .mjs in esm
             nodeIntegration: false,

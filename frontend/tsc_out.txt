@@ -1,4 +1,0 @@
-src/pages/cashier/CashierDashboard.tsx(8,10): error TS6133: 'HiOutlineCash' is declared but its value is never read.
-src/pages/cashier/CashierDashboard.tsx(219,37): error TS6133: 'groupKey' is declared but its value is never read.
-src/pages/cashier/CashierDashboard.tsx(244,11): error TS6133: 'togglePay' is declared but its value is never read.
-src/pages/waiter/WaiterOrders.tsx(2,10): error TS6133: 'getDisplayTableNumber' is declared but its value is never read.
