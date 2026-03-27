@@ -168,13 +168,13 @@ const PinLoginPage: React.FC = () => {
                 {/* Admin login link */}
                 <button
                     onClick={() => navigate('/login/admin')}
-                    className="flex items-center justify-center gap-2 w-full mt-6 py-3 text-sm text-surface-500 hover:text-brand-400 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full mt-6 py-3 text-sm text-surface-400 hover:text-brand-400 transition-colors"
                 >
                     <HiOutlineShieldCheck className="w-4 h-4" />
                     Admin kimi daxil ol
                 </button>
 
-                <p className="text-center text-surface-500 text-xs mt-4">
+                <p className="text-center text-surface-400 text-xs mt-4">
                     Servio — Sifarişlərin İdarəetmə Sistemi
                 </p>
             </div>

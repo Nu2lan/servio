@@ -118,12 +118,12 @@ const LoginPage: React.FC = () => {
 
                 <button
                     onClick={() => navigate('/login')}
-                    className="flex items-center justify-center gap-2 w-full mt-4 py-2 text-sm text-surface-500 hover:text-brand-400 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full mt-4 py-2 text-sm text-surface-400 hover:text-brand-400 transition-colors"
                 >
                     ← PİN Girişinə qayıt
                 </button>
 
-                <p className="text-center text-surface-500 text-xs mt-4">
+                <p className="text-center text-surface-400 text-xs mt-4">
                     Servio — Sifarişlərin İdarəetmə Sistemi
                 </p>
             </div>
