@@ -5,6 +5,8 @@ node_modules/
 dist/
 build/
 temp_dist/
+dist-electron/
+release/
 
 # Environment variables
 .env
