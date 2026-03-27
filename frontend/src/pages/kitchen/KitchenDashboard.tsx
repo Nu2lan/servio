@@ -1,99 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Layout from '../../components/Layout';
-import api from '../../lib/api';
-import { getSocket } from '../../lib/socket';
-import toast from 'react-hot-toast';
 import { HiOutlineClock } from 'react-icons/hi';
-
-interface OrderItem {
-    index: number;
-    name: string;
-    quantity: number;
-    prepared: boolean;
-}
-
-interface Order {
-    _id: string;
-    tableNumber: string;
-    items: OrderItem[];
-    status: string;
-    createdAt: string;
-}
+import { getDisplayTableNumber, getTimeSince } from '../../utils/formatters';
+import { useDashboardOrders } from '../../hooks/useDashboardOrders';
 
 const KitchenDashboard: React.FC = () => {
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        fetchOrders();
-        const socket = getSocket();
-
-        socket.on('new-order', (order: Order) => {
-            setOrders((prev) => [order, ...prev]);
-            toast.success(`Yeni sifariş — Masa #${order.tableNumber}`, { icon: '🔥' });
-        });
-
-        socket.on('item-prepared', ({ orderId, itemIndex }: { orderId: string; itemIndex: number }) => {
-            setOrders((prev) =>
-                prev
-                    .map((o) =>
-                        o._id === orderId
-                            ? { ...o, items: o.items.map((i) => (i.index === itemIndex ? { ...i, prepared: true } : i)) }
-                            : o
-                    )
-                    .filter((o) => o.items.some((i) => !i.prepared))
-            );
-        });
-
-        socket.on('order-updated', (update: { _id: string; status: string }) => {
-            setOrders((prev) =>
-                prev.map((o) => (o._id === update._id ? { ...o, status: update.status } : o))
-                    .filter((o) => o.status === 'confirmed')
-            );
-        });
-
-        return () => {
-            socket.off('new-order');
-            socket.off('item-prepared');
-            socket.off('order-updated');
-        };
-    }, []);
-
-    const fetchOrders = async () => {
-        try {
-            const { data } = await api.get('/kitchen/orders');
-            setOrders(data);
-        } catch {
-            toast.error('Sifarişləri yükləmək mümkün olmadı');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const markItemDone = async (orderId: string, itemIndex: number) => {
-        try {
-            await api.patch(`/kitchen/orders/${orderId}/items/${itemIndex}`);
-            setOrders((prev) =>
-                prev
-                    .map((o) =>
-                        o._id === orderId
-                            ? { ...o, items: o.items.map((i) => (i.index === itemIndex ? { ...i, prepared: true } : i)) }
-                            : o
-                    )
-                    .filter((o) => o.items.some((i) => !i.prepared))
-            );
-        } catch {
-            toast.error('Məhsulu işarələmək mümkün olmadı');
-        }
-    };
-
-    const getTimeSince = (dateStr: string) => {
-        const diff = Date.now() - new Date(dateStr).getTime();
-        const mins = Math.floor(diff / 60000);
-        if (mins < 1) return 'İndi';
-        if (mins < 60) return `${mins} dəq. əvvəl`;
-        return `${Math.floor(mins / 60)}s ${mins % 60}dəq əvvəl`;
-    };
+    const { orders, loading, markItemDone } = useDashboardOrders('kitchen');
 
     return (
         <Layout title="Mətbəx Ekranı">
@@ -127,13 +39,13 @@ const KitchenDashboard: React.FC = () => {
                             >
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-xl bg-brand-500/20 flex items-center justify-center">
-                                            <span className="text-xl font-bold text-brand-400">
+                                        <div className="h-12 px-3 min-w-[3rem] w-auto rounded-xl bg-brand-500/20 flex items-center justify-center">
+                                            <span className="text-xl font-bold text-brand-400 whitespace-nowrap">
                                                 {order.tableNumber}
                                             </span>
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-surface-100">Masa #{order.tableNumber}</h3>
+                                            <h3 className="font-bold text-surface-100">{getDisplayTableNumber(order.tableNumber)}</h3>
                                             <div className="flex items-center gap-1 text-xs text-surface-400">
                                                 <HiOutlineClock className="w-3 h-3" />
                                                 {getTimeSince(order.createdAt)}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { extractTableNumber } from '../../utils/formatters';
 import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -86,13 +87,6 @@ const WaiterOrders: React.FC = () => {
         }
 
         return null;
-    };
-
-    // Extract display-friendly table number (just the number part)
-    const getDisplayTableNumber = (tableNumber: string): string => {
-        const dashIdx = tableNumber.lastIndexOf('-');
-        if (dashIdx > 0) return tableNumber.substring(dashIdx + 1);
-        return tableNumber;
     };
 
     // Get orders for active tab
@@ -235,7 +229,7 @@ const WaiterOrders: React.FC = () => {
                                         ) : (
                                             <>
                                                 <span className="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-brand-500/30">
-                                                    {getDisplayTableNumber(group.tableNumber)}
+                                                    {extractTableNumber(group.tableNumber)}
                                                 </span>
                                                 <span className="text-xs text-surface-500">Masa</span>
                                             </>

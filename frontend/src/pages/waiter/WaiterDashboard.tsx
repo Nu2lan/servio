@@ -764,7 +764,7 @@ const WaiterDashboard: React.FC = () => {
                                     setAdminPin('');
                                     setShowOrderPopup(false);
                                 }}
-                                className="w-full py-4 rounded-2xl text-lg font-bold bg-surface-700 text-white hover:bg-surface-600 transition-all flex items-center justify-center gap-2"
+                                className="w-full py-4 rounded-2xl text-lg font-bold bg-surface-700 text-surface-100 hover:bg-surface-600 transition-all flex items-center justify-center gap-2"
                             >
                                 <HiOutlineCheck className="w-6 h-6" />
                                 Bitdi

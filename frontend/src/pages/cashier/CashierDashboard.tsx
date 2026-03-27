@@ -3,9 +3,11 @@ import Layout from '../../components/Layout';
 import api from '../../lib/api';
 import { getSocket } from '../../lib/socket';
 import { buildCheckReceiptHtml, printHtmlWithQz } from '../../lib/printReceipt';
+import { getDisplayTableNumber, extractTableNumber } from '../../utils/formatters';
 import toast from 'react-hot-toast';
-import { HiOutlineCash, HiOutlineCheck, HiOutlineViewGrid, HiOutlineViewList, HiOutlinePrinter, HiOutlineDocumentText } from 'react-icons/hi';
+import { HiOutlineCheck, HiOutlineViewGrid, HiOutlineViewList, HiOutlinePrinter, HiOutlineDocumentText } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
+import { EndOfDayModal, PaymentModal } from './components/CashierModals';
 
 interface OrderItem {
     name: string;
@@ -64,8 +66,8 @@ const CashierDashboard: React.FC = () => {
 
         socket.on('new-order', (order: Order) => {
             setOrders((prev) => [order, ...prev]);
-            const displayTable = order.tableNumber.includes('-') ? order.tableNumber.replace('-', ' — Masa ') : `Masa #${order.tableNumber}`;
-            toast.success(`Yeni sifariş — ${displayTable}`, { icon: '🔔' });
+            const displayTable = getDisplayTableNumber(order.tableNumber);
+            toast.success(`Yeni sifariş — ${displayTable}`, { icon: '💰' });
         });
 
         socket.on('orders-paid', () => {
@@ -119,11 +121,6 @@ const CashierDashboard: React.FC = () => {
     };
 
     // Extract display-friendly table number (just the number part)
-    const getDisplayTableNumber = (tableNumber: string): string => {
-        const dashIdx = tableNumber.lastIndexOf('-');
-        if (dashIdx > 0) return tableNumber.substring(dashIdx + 1);
-        return tableNumber;
-    };
 
     const isCabinetOrder = (order: Order): boolean => {
         return halls.some(h => h.type === 'cabinet' && h.name === order.tableNumber);
@@ -219,10 +216,10 @@ const CashierDashboard: React.FC = () => {
         }
     };
 
-    const handlePrintCheck = async (groupKey: string, group: GroupedOrder) => {
+    const handlePrintCheck = async (group: GroupedOrder) => {
         const isCabinet = halls.some(h => h.type === 'cabinet' && h.name === group.tableNumber);
-        const displayNum = getDisplayTableNumber(group.tableNumber);
         const hallName = getOrderHall({ tableNumber: group.tableNumber } as Order);
+        const displayNum = extractTableNumber(group.tableNumber);
         const tableLabel = isCabinet ? group.tableNumber : hallName ? `${hallName} - Masa #${displayNum}` : `Masa #${displayNum}`;
         const waiterLabel = group.waiterNames.length > 0 ? group.waiterNames.join(', ') : '';
 
@@ -244,17 +241,6 @@ const CashierDashboard: React.FC = () => {
         }
     };
 
-    const togglePay = async (orderId: string) => {
-        try {
-            const { data } = await api.patch(`/cashier/orders/${orderId}/pay`);
-            setOrders((prev) =>
-                prev.map((o) => (o._id === orderId ? data : o))
-            );
-            toast.success(data.status === 'paid' ? 'Sifariş ödənildi kimi işarələndi' : 'Sifariş ödənilmədi kimi işarələndi');
-        } catch {
-            toast.error('Sifarişi yeniləmək mümkün olmadı');
-        }
-    };
 
     const togglePayGroup = async (orderIds: string[], method: 'cash' | 'card') => {
         try {
@@ -263,7 +249,7 @@ const CashierDashboard: React.FC = () => {
             setOrders((prev) =>
                 prev.map((o) => (updatedMap.has(o._id) ? (updatedMap.get(o._id) as Order) : o))
             );
-            const tableNum = data.length > 0 ? getDisplayTableNumber(data[0].tableNumber) : '';
+            const tableNum = data.length > 0 ? extractTableNumber(data[0].tableNumber) : '';
             toast.success(`Masa ${tableNum} ödənildi`);
         } catch {
             toast.error('Sifarişləri yeniləmək mümkün olmadı');
@@ -470,10 +456,10 @@ const CashierDashboard: React.FC = () => {
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'bg-purple-500/20' : 'bg-brand-500/20'}`}>
-                                            <span className={`text-sm font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : getDisplayTableNumber(group.tableNumber)}</span>
+                                            <span className={`text-sm font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : extractTableNumber(group.tableNumber)}</span>
                                         </div>
                                         <div>
-                                            <span className="text-xs text-surface-300 font-medium">{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Masa ${getDisplayTableNumber(group.tableNumber)}`}</span>
+                                            <span className="text-xs text-surface-300 font-medium">{getDisplayTableNumber(group.tableNumber)}</span>
                                             {group.orderCount > 1 && (
                                                 <p className="text-[10px] text-surface-500">{group.orderCount} sifariş</p>
                                             )}
@@ -506,7 +492,7 @@ const CashierDashboard: React.FC = () => {
                                 <div className="flex gap-1.5">
                                     {group.status !== 'paid' && (
                                         <button
-                                            onClick={() => handlePrintCheck(group.orderIds.join('-'), group)}
+                                            onClick={() => handlePrintCheck(group)}
                                             className={`w-1/2 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1 ${group.checkPrinted
                                                 ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                                                 : 'bg-blue-500 text-white hover:bg-blue-600'
@@ -542,11 +528,11 @@ const CashierDashboard: React.FC = () => {
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'bg-purple-500/20' : 'bg-brand-500/20'}`}>
-                                            <span className={`text-xl font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : getDisplayTableNumber(group.tableNumber)}</span>
+                                            <span className={`text-xl font-bold ${isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? 'text-purple-400' : 'text-brand-400'}`}>{isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? '🚪' : extractTableNumber(group.tableNumber)}</span>
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-surface-100">
-                                                {isCabinetOrder({ tableNumber: group.tableNumber } as Order) ? group.tableNumber : `Masa #${getDisplayTableNumber(group.tableNumber)}`}
+                                                {getDisplayTableNumber(group.tableNumber)}
                                                 {group.orderCount > 1 && (
                                                     <span className="ml-2 text-xs text-surface-500 font-normal bg-surface-800 px-2 py-0.5 rounded-md">{group.orderCount} sifariş</span>
                                                 )}
@@ -602,7 +588,7 @@ const CashierDashboard: React.FC = () => {
                                 <div className="flex gap-2">
                                     {group.status !== 'paid' && (
                                         <button
-                                            onClick={() => handlePrintCheck(group.orderIds.join('-'), group)}
+                                            onClick={() => handlePrintCheck(group)}
                                             className={`w-1/2 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 ${group.checkPrinted
                                                 ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                                                 : 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/25'
@@ -633,69 +619,25 @@ const CashierDashboard: React.FC = () => {
             </div>
 
             {/* End of Day Confirmation Modal */}
-            {showEndOfDayModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => setShowEndOfDayModal(false)}>
-                    <div className="bg-surface-800 p-6 sm:p-8 rounded-3xl w-full max-w-sm space-y-6 shadow-2xl border border-surface-700 relative text-center animate-slide-up" onClick={e => e.stopPropagation()}>
-                        <div className="w-16 h-16 bg-brand-500/20 text-brand-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <HiOutlineDocumentText className="w-8 h-8" />
-                        </div>
-                        <h3 className="text-xl font-bold text-surface-100">Gün sonu</h3>
-                        <p className="text-surface-300 text-lg relative z-[100] selection:bg-brand-500/30">Təsdiq etmək istəyirsinizmi?</p>
-
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={() => {
-                                    setShowEndOfDayModal(false);
-                                    handlePrintEndOfDay();
-                                }}
-                                className="flex-1 py-3 rounded-xl bg-brand-500 text-white font-semibold hover:bg-brand-600 active:scale-95 shadow-lg shadow-brand-500/25 transition-all outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:ring-offset-surface-800"
-                            >
-                                Bəli
-                            </button>
-                            <button
-                                onClick={() => setShowEndOfDayModal(false)}
-                                className="flex-1 py-3 rounded-xl bg-surface-700 text-surface-300 font-semibold hover:bg-surface-600 active:scale-95 transition-all outline-none focus:ring-2 focus:ring-surface-500"
-                            >
-                                Xeyr
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <EndOfDayModal 
+                isOpen={showEndOfDayModal} 
+                onClose={() => setShowEndOfDayModal(false)}
+                onConfirm={handlePrintEndOfDay} 
+            />
 
             {/* Payment Method Selection Modal */}
-            {showPaymentModal.isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 sm:p-6" onClick={() => setShowPaymentModal({ isOpen: false, orderIds: [] })}>
-                    <div className="bg-surface-800 p-6 sm:p-8 rounded-3xl w-full max-w-sm space-y-6 shadow-2xl border border-surface-700 relative text-center animate-slide-up" onClick={e => e.stopPropagation()}>
-                        <div className="w-16 h-16 bg-brand-500/20 text-brand-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <HiOutlineCash className="w-8 h-8" />
-                        </div>
-                        <h3 className="text-xl font-bold text-surface-100">Ödəniş növü</h3>
-                        <p className="text-surface-300 text-lg relative z-[100] selection:bg-brand-500/30">Zəhmət olmasa ödəniş növünü seçin</p>
-
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={() => {
-                                    setShowPaymentModal({ isOpen: false, orderIds: [] });
-                                    togglePayGroup(showPaymentModal.orderIds, 'cash');
-                                }}
-                                className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 active:scale-95 shadow-lg shadow-emerald-500/25 transition-all outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-surface-800"
-                            >
-                                Nağd Ödəniş
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowPaymentModal({ isOpen: false, orderIds: [] });
-                                    togglePayGroup(showPaymentModal.orderIds, 'card');
-                                }}
-                                className="flex-1 py-3 rounded-xl bg-blue-500 text-white font-semibold hover:bg-blue-600 active:scale-95 shadow-lg shadow-blue-500/25 transition-all outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-surface-800"
-                            >
-                                Kartla Ödəniş
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <PaymentModal 
+                isOpen={showPaymentModal.isOpen} 
+                onClose={() => setShowPaymentModal({ isOpen: false, orderIds: [] })}
+                onPayCash={() => {
+                    setShowPaymentModal({ isOpen: false, orderIds: [] });
+                    togglePayGroup(showPaymentModal.orderIds, 'cash');
+                }}
+                onPayCard={() => {
+                    setShowPaymentModal({ isOpen: false, orderIds: [] });
+                    togglePayGroup(showPaymentModal.orderIds, 'card');
+                }}
+            />
         </Layout>
     );
 };

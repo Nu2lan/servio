@@ -224,14 +224,6 @@ const MenuManagement: React.FC = () => {
         }
     };
 
-    const getIngredientsSummary = (item: MenuItem) => {
-        return item.ingredients
-            .map((ing) => {
-                const inv = ing.inventoryItem as InventoryItem;
-                return `${inv?.name || '?'} ×${ing.qty}`;
-            })
-            .join(', ') || '—';
-    };
 
     return (
         <Layout title="Admin Panel" navItems={adminNav}>

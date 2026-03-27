@@ -79,10 +79,18 @@ const PinLoginPage: React.FC = () => {
             <div className="relative w-full max-w-md animate-slide-up">
                 {/* Logo area */}
                 <div className="text-center mb-8">
+                    {/* Light mode logo */}
+                    <img
+                        src="/servio_dark.png"
+                        alt="Servio"
+                        className="h-20 mx-auto mb-6 object-contain drop-shadow-lg select-none block dark:hidden"
+                        draggable={false}
+                    />
+                    {/* Dark mode logo */}
                     <img
                         src="/servio.png"
                         alt="Servio"
-                        className="h-20 mx-auto mb-6 object-contain drop-shadow-lg select-none"
+                        className="h-20 mx-auto mb-6 object-contain drop-shadow-lg select-none hidden dark:block"
                         draggable={false}
                     />
                     <p className="text-surface-400 text-lg mt-2">Giriş üçün PİN kodunuzu daxil edin</p>

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import LoginPage from './pages/LoginPage';
@@ -32,34 +33,36 @@ function App() {
     };
 
     return (
-        <Routes>
-            <Route path="/login" element={<PinLoginPage />} />
-            <Route path="/login/admin" element={<LoginPage />} />
+        <ThemeProvider>
+            <Routes>
+                <Route path="/login" element={<PinLoginPage />} />
+                <Route path="/login/admin" element={<LoginPage />} />
 
-            {/* Waiter routes */}
-            <Route path="/waiter" element={<ProtectedRoute allowedRoles={['waiter']}><WaiterDashboard /></ProtectedRoute>} />
-            <Route path="/waiter/orders" element={<ProtectedRoute allowedRoles={['waiter']}><WaiterOrders /></ProtectedRoute>} />
+                {/* Waiter routes */}
+                <Route path="/waiter" element={<ProtectedRoute allowedRoles={['waiter']}><WaiterDashboard /></ProtectedRoute>} />
+                <Route path="/waiter/orders" element={<ProtectedRoute allowedRoles={['waiter']}><WaiterOrders /></ProtectedRoute>} />
 
-            {/* Kitchen routes */}
-            <Route path="/kitchen" element={<ProtectedRoute allowedRoles={['kitchen']}><KitchenDashboard /></ProtectedRoute>} />
+                {/* Kitchen routes */}
+                <Route path="/kitchen" element={<ProtectedRoute allowedRoles={['kitchen']}><KitchenDashboard /></ProtectedRoute>} />
 
-            {/* Bar routes */}
-            <Route path="/bar" element={<ProtectedRoute allowedRoles={['bar']}><BarDashboard /></ProtectedRoute>} />
+                {/* Bar routes */}
+                <Route path="/bar" element={<ProtectedRoute allowedRoles={['bar']}><BarDashboard /></ProtectedRoute>} />
 
-            {/* Cashier routes */}
-            <Route path="/cashier" element={<ProtectedRoute allowedRoles={['cashier']}><CashierDashboard /></ProtectedRoute>} />
+                {/* Cashier routes */}
+                <Route path="/cashier" element={<ProtectedRoute allowedRoles={['cashier']}><CashierDashboard /></ProtectedRoute>} />
 
-            {/* Admin routes */}
-            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/menu" element={<ProtectedRoute allowedRoles={['admin']}><MenuManagement /></ProtectedRoute>} />
-            <Route path="/admin/inventory" element={<ProtectedRoute allowedRoles={['admin']}><InventoryManagement /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagement /></ProtectedRoute>} />
-            <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['admin']}><Reports /></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><Settings /></ProtectedRoute>} />
+                {/* Admin routes */}
+                <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/menu" element={<ProtectedRoute allowedRoles={['admin']}><MenuManagement /></ProtectedRoute>} />
+                <Route path="/admin/inventory" element={<ProtectedRoute allowedRoles={['admin']}><InventoryManagement /></ProtectedRoute>} />
+                <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagement /></ProtectedRoute>} />
+                <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['admin']}><Reports /></ProtectedRoute>} />
+                <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><Settings /></ProtectedRoute>} />
 
-            {/* Default redirect */}
-            <Route path="*" element={<Navigate to={getRoleRedirect()} replace />} />
-        </Routes>
+                {/* Default redirect */}
+                <Route path="*" element={<Navigate to={getRoleRedirect()} replace />} />
+            </Routes>
+        </ThemeProvider>
     );
 }
 

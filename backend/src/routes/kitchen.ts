@@ -29,7 +29,7 @@ router.get('/orders', async (req: AuthRequest, res: Response): Promise<void> => 
                 return {
                     _id: order._id,
                     tableNumber: order.tableNumber,
-                    items: roleItems.map((i, idx) => ({
+                    items: roleItems.map((i) => ({
                         index: order.items.indexOf(i),
                         name: i.name,
                         quantity: i.quantity,
