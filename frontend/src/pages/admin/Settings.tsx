@@ -64,6 +64,10 @@ const Settings: React.FC = () => {
         receipt: '', kitchen: '', bar: '', cancel: ''
     });
 
+    // Inventory tracking state
+    const [inventoryTrackingEnabled, setInventoryTrackingEnabled] = useState(true);
+    const [savedInventoryTracking, setSavedInventoryTracking] = useState(true);
+
     useEffect(() => {
         fetchSettings();
     }, []);
@@ -90,6 +94,8 @@ const Settings: React.FC = () => {
                 bar: data.printerBar || '',
                 cancel: data.printerCancel || ''
             });
+            setInventoryTrackingEnabled(data.inventoryTrackingEnabled !== false);
+            setSavedInventoryTracking(data.inventoryTrackingEnabled !== false);
         } catch {
             toast.error('Tənzimləmələri yükləmək mümkün olmadı');
         } finally {
@@ -342,6 +348,43 @@ const Settings: React.FC = () => {
                             <HiOutlineCheck className="w-4 h-4" />
                             Saxla
                         </button>
+                    </div>
+                </div>
+
+                {/* ─── Inventory Tracking Toggle ─── */}
+                <div className="card">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2 mr-auto">
+                            <span className="text-lg">📦</span>
+                            <div>
+                                <h3 className="text-base font-semibold text-surface-100">Anbar İzləmə</h3>
+                                <p className="text-xs text-surface-400 mt-0.5">
+                                    {inventoryTrackingEnabled
+                                        ? 'Aktiv: Sifariş verildikdə anbar ehtiyatları avtomatik azalır.'
+                                        : 'Deaktiv: Menyu elementləri anbar ehtiyatından asılı olmadan sifariş edilə bilər.'}
+                                </p>
+                            </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={inventoryTrackingEnabled}
+                                onChange={async (e) => {
+                                    const newVal = e.target.checked;
+                                    setInventoryTrackingEnabled(newVal);
+                                    try {
+                                        await api.put('/admin/settings', { inventoryTrackingEnabled: newVal });
+                                        setSavedInventoryTracking(newVal);
+                                        toast.success(newVal ? 'Anbar izləmə aktivləşdirildi' : 'Anbar izləmə deaktiv edildi');
+                                    } catch {
+                                        setInventoryTrackingEnabled(!newVal);
+                                        toast.error('Tənzimləməni saxlamaq mümkün olmadı');
+                                    }
+                                }}
+                            />
+                            <div className="w-11 h-6 bg-surface-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-500" />
+                        </label>
                     </div>
                 </div>
 

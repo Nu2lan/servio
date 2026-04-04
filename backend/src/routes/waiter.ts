@@ -4,6 +4,7 @@ import Inventory from '../models/Inventory';
 import InventoryLog from '../models/InventoryLog';
 import Order from '../models/Order';
 import User from '../models/User';
+import Settings from '../models/Settings';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { getIO } from '../socket';
 import { buildCategoryRoleMap, getItemRole } from '../utils/categoryRole';
@@ -34,6 +35,10 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
             res.status(400).json({ message: 'Masa nömrəsi və məhsullar tələb olunur.' });
             return;
         }
+
+        // Check if inventory tracking is enabled
+        const settings = await Settings.findOne();
+        const inventoryTrackingEnabled = settings?.inventoryTrackingEnabled !== false;
 
         // Fetch menu items with their ingredients and build order items with prices
         const orderItems = [];
@@ -75,14 +80,16 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
             });
         }
 
-        // Check stock availability for all ingredients
-        for (const [invId, req_] of ingredientRequirements) {
-            const inventory = await Inventory.findById(invId);
-            if (!inventory || inventory.stock < req_.totalNeeded) {
-                res.status(400).json({
-                    message: `"${inventory?.name || 'Naməlum'}" üçün kifayət qədər ehtiyat yoxdur. Tələb olunan: ${req_.totalNeeded}, Mövcud: ${inventory?.stock || 0}`,
-                });
-                return;
+        // Check stock availability for all ingredients (only if tracking enabled)
+        if (inventoryTrackingEnabled) {
+            for (const [invId, req_] of ingredientRequirements) {
+                const inventory = await Inventory.findById(invId);
+                if (!inventory || inventory.stock < req_.totalNeeded) {
+                    res.status(400).json({
+                        message: `"${inventory?.name || 'Naməlum'}" üçün kifayət qədər ehtiyat yoxdur. Tələb olunan: ${req_.totalNeeded}, Mövcud: ${inventory?.stock || 0}`,
+                    });
+                    return;
+                }
             }
         }
 
@@ -96,36 +103,38 @@ router.post('/orders', async (req: AuthRequest, res: Response): Promise<void> =>
         });
         await order.save();
 
-        // Deduct inventory for each ingredient
+        // Deduct inventory for each ingredient (only if tracking enabled)
         const updatedInventoryIds: string[] = [];
-        for (const item of items) {
-            const menuItem = await MenuItem.findById(item.menuItemId)
-                .populate('ingredients.inventoryItem');
-            if (!menuItem) continue;
+        if (inventoryTrackingEnabled) {
+            for (const item of items) {
+                const menuItem = await MenuItem.findById(item.menuItemId)
+                    .populate('ingredients.inventoryItem');
+                if (!menuItem) continue;
 
-            for (const ingredient of menuItem.ingredients) {
-                const invItem = ingredient.inventoryItem as any;
-                const inventory = await Inventory.findById(invItem._id);
-                if (!inventory) continue;
+                for (const ingredient of menuItem.ingredients) {
+                    const invItem = ingredient.inventoryItem as any;
+                    const inventory = await Inventory.findById(invItem._id);
+                    if (!inventory) continue;
 
-                const deduction = Math.round(ingredient.qty * item.quantity * 10000) / 10000;
-                const stockBefore = inventory.stock;
-                inventory.stock = Math.round((inventory.stock - deduction) * 10000) / 10000;
-                inventory.lastUpdated = new Date();
-                await inventory.save();
+                    const deduction = Math.round(ingredient.qty * item.quantity * 10000) / 10000;
+                    const stockBefore = inventory.stock;
+                    inventory.stock = Math.round((inventory.stock - deduction) * 10000) / 10000;
+                    inventory.lastUpdated = new Date();
+                    await inventory.save();
 
-                updatedInventoryIds.push(inventory._id.toString());
+                    updatedInventoryIds.push(inventory._id.toString());
 
-                // Log inventory change
-                await new InventoryLog({
-                    inventoryItem: inventory._id,
-                    inventoryItemName: inventory.name,
-                    quantityUsed: deduction,
-                    stockBefore,
-                    stockAfter: inventory.stock,
-                    order: order._id,
-                    tableNumber,
-                }).save();
+                    // Log inventory change
+                    await new InventoryLog({
+                        inventoryItem: inventory._id,
+                        inventoryItemName: inventory.name,
+                        quantityUsed: deduction,
+                        stockBefore,
+                        stockAfter: inventory.stock,
+                        order: order._id,
+                        tableNumber,
+                    }).save();
+                }
             }
         }
 

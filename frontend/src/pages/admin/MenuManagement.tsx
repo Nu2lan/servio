@@ -72,6 +72,7 @@ const MenuManagement: React.FC = () => {
     const [showNewInventory, setShowNewInventory] = useState(false);
     const [newInventory, setNewInventory] = useState({ name: '', stock: '', unit: 'ədəd' });
     const [searchQuery, setSearchQuery] = useState('');
+    const [inventoryTrackingEnabled, setInventoryTrackingEnabled] = useState(true);
 
     useEffect(() => {
         fetchItems();
@@ -87,6 +88,7 @@ const MenuManagement: React.FC = () => {
             );
             setCategories(catNames);
             setForm((prev) => ({ ...prev, category: prev.category || catNames[0] || '' }));
+            setInventoryTrackingEnabled(data.inventoryTrackingEnabled !== false);
         } catch {
             toast.error('Kateqoriyaları yükləmək mümkün olmadı');
         }
@@ -127,10 +129,12 @@ const MenuManagement: React.FC = () => {
             name: form.name,
             price: parseFloat(form.price),
             category: form.category,
-            ingredients: selectedIngredients.map((i) => ({
-                inventoryItem: i.inventoryItem,
-                qty: i.qty,
-            })),
+            ingredients: inventoryTrackingEnabled
+                ? selectedIngredients.map((i) => ({
+                    inventoryItem: i.inventoryItem,
+                    qty: i.qty,
+                }))
+                : [],
         };
 
         try {
@@ -317,6 +321,7 @@ const MenuManagement: React.FC = () => {
                                     </div>
 
                                     {/* Ingredients Picker */}
+                                    {inventoryTrackingEnabled && (
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <label className="label mb-0">Tərkibi (Anbar Elementləri)</label>
@@ -457,6 +462,7 @@ const MenuManagement: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
+                                    )}
 
                                 </div>
                                 <div className="sticky bottom-0 bg-surface-800 px-6 py-4 border-t border-surface-700/50 flex items-center gap-2">
@@ -498,6 +504,7 @@ const MenuManagement: React.FC = () => {
                                 </div>
                             </div>
                             {/* Ingredients Picker */}
+                            {inventoryTrackingEnabled && (
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="label mb-0">Tərkibi (Anbar Elementləri)</label>
@@ -565,6 +572,7 @@ const MenuManagement: React.FC = () => {
                                     </div>
                                 )}
                             </div>
+                            )}
                             <div className="flex items-center gap-2">
                                 <button type="submit" className="btn-primary flex-1">
                                     {editingId ? 'Elementi Yenilə' : 'Element Əlavə Et'}
@@ -604,7 +612,7 @@ const MenuManagement: React.FC = () => {
                                             </span>
                                         </div>
                                     </div>
-                                    {(item.ingredients || []).length > 0 && (
+                                    {inventoryTrackingEnabled && item.ingredients && item.ingredients.length > 0 && (
                                         <div className="flex flex-wrap gap-1">
                                             {item.ingredients.map((ing, idx) => {
                                                 const inv = ing.inventoryItem as InventoryItem;
@@ -614,6 +622,11 @@ const MenuManagement: React.FC = () => {
                                                     </span>
                                                 );
                                             })}
+                                        </div>
+                                    )}
+                                    {!inventoryTrackingEnabled && (
+                                        <div className="flex flex-wrap gap-1">
+                                            <span className="text-surface-500 text-xs">—</span>
                                         </div>
                                     )}
                                     <div className="flex items-center gap-2 pt-1 border-t border-surface-700/30">
@@ -649,17 +662,20 @@ const MenuManagement: React.FC = () => {
                                             <td className="p-4 text-right text-surface-200">{(item.price ?? 0).toFixed(2)} AZN</td>
                                             <td className="p-4 text-surface-300 text-xs max-w-xs">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {(item.ingredients || []).length > 0 ?
-                                                        (item.ingredients || []).map((ing, idx) => {
-                                                            const inv = ing.inventoryItem as InventoryItem;
-                                                            return (
-                                                                <span key={idx} className="badge bg-surface-700/50 text-surface-300 text-xs">
-                                                                    {inv?.name || '?'} ×{ing.qty}
-                                                                </span>
-                                                            );
-                                                        })
-                                                        : <span className="text-surface-500">—</span>
-                                                    }
+                                                    {inventoryTrackingEnabled ? (
+                                                        (item.ingredients || []).length > 0 ?
+                                                            (item.ingredients || []).map((ing, idx) => {
+                                                                const inv = ing.inventoryItem as InventoryItem;
+                                                                return (
+                                                                    <span key={idx} className="badge bg-surface-700/50 text-surface-300 text-xs">
+                                                                        {inv?.name || '?'} ×{ing.qty}
+                                                                    </span>
+                                                                );
+                                                            })
+                                                            : <span className="text-surface-500">—</span>
+                                                    ) : (
+                                                        <span className="text-surface-500">—</span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="p-4 text-center">

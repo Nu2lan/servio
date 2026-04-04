@@ -22,6 +22,7 @@ export interface ISettings extends Document {
     printerKitchen: string;
     printerBar: string;
     printerCancel: string;
+    inventoryTrackingEnabled: boolean;
 }
 
 const categorySchema = new Schema<ICategory>(
@@ -120,6 +121,10 @@ const settingsSchema = new Schema<ISettings>(
         printerCancel: {
             type: String,
             default: '',
+        },
+        inventoryTrackingEnabled: {
+            type: Boolean,
+            default: true,
         },
     },
     { timestamps: true }
